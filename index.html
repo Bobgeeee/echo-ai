@@ -605,10 +605,11 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, password })
                 });
+                const data = await res.json();
                 if (res.ok) {
                     await checkUserSession();
                 } else {
-                    alert("Login failed.");
+                    alert(data.detail || "Login failed.");
                 }
             } catch (err) {
                 alert("Connection failed.");
@@ -630,11 +631,12 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, password, confirm_password })
                 });
+                const data = await res.json();
                 if (res.ok) {
-                    alert("Account created!");
+                    alert("Account created successfully! Welcome email sent.");
                     await checkUserSession();
                 } else {
-                    alert("Registration failed.");
+                    alert(data.detail || "Registration failed.");
                 }
             } catch (err) {
                 alert("Connection error.");

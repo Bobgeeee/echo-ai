@@ -33,7 +33,7 @@ SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
 SMTP_PORT = int(os.getenv("SMTP_PORT", 587))
 SMTP_USERNAME = os.getenv("SMTP_USERNAME", "ibrahimmuhammadlawal491@gmail.com")
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "codk pems fpog hqiy")
-APP_DOMAIN = os.getenv("APP_DOMAIN", "localhost:8000")
+APP_DOMAIN = os.getenv("APP_DOMAIN", "echoai.buzz")
 
 # Gemini API Configuration
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY")
@@ -278,11 +278,11 @@ def read_root():
 @app.post("/api/register")
 def register(user_data: RegisterSchema, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     if user_data.password != user_data.confirm_password:
-        raise HTTPException(status_code=400, detail="Passwords do not match")
+        raise HTTPException(status_code=400, detail="Passwords do not match.")
     
     existing_user = db.query(User).filter(User.email == user_data.email).first()
     if existing_user:
-        raise HTTPException(status_code=400, detail="Email already registered")
+        raise HTTPException(status_code=400, detail="This email is already registered. Please sign in.")
 
     hashed_pwd = get_password_hash(user_data.password)
     new_user = User(email=user_data.email, hashed_password=hashed_pwd)
@@ -309,8 +309,10 @@ def register(user_data: RegisterSchema, background_tasks: BackgroundTasks, db: S
 @app.post("/api/login")
 def login(user_data: LoginSchema, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == user_data.email).first()
-    if not user or not verify_password(user_data.password, user.hashed_password):
-        raise HTTPException(status_code=401, detail="Invalid email or password")
+    if not user:
+        raise HTTPException(status_code=401, detail="No account found with this email address.")
+    if not verify_password(user_data.password, user.hashed_password):
+        raise HTTPException(status_code=401, detail="Incorrect password. Please try again.")
 
     token = create_access_token({"sub": user.email})
     response = JSONResponse(content={"message": "Logged in successfully"})
@@ -396,7 +398,7 @@ def update_dump(dump_id: int, dump: DumpSchema, request: Request, db: Session = 
 
     db_dump = db.query(ThoughtDump).filter(ThoughtDump.id == dump_id, ThoughtDump.user_id == user.id).first()
     if not db_dump:
-        raise HTTPException(status_code=404, detail="Dump entry not found")
+        raise HTTPException(status_update=404, detail="Dump entry not found")
 
     parsed_result = parse_with_gemini(dump.raw_text)
     saved_text = parsed_result.get("cleaned_text", dump.raw_text)
