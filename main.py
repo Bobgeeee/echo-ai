@@ -17,9 +17,12 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import google.generativeai as genai
 import bcrypt
-if not hasattr(bcrypt, '__about__'):
-    bcrypt.__about__ = type('obj', (object,), {'__version__': getattr(bcrypt, '__version__', '4.0.0')})
-
+try:
+    import passlib.handlers.bcrypt
+    if not hasattr(bcrypt, '__about__'):
+        bcrypt.__about__ = type('obj', (object,), {'__version__': '4.0.0'})
+except Exception:
+    pass
 # ==========================================
 # CONFIGURATION & ENVIRONMENT VARIABLES
 # ==========================================
