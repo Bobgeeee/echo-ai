@@ -11,22 +11,19 @@ from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime, F
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 import jwt
-from passlib.context import CryptContext
+import bcrypt
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import google.generativeai as genai
-import bcrypt
-try:
-    import passlib.handlers.bcrypt
-    if not hasattr(bcrypt, '__about__'):
-        bcrypt.__about__ = type('obj', (object,), {'__version__': '4.0.0'})
-except Exception:
-    pass
+
 # ==========================================
 # CONFIGURATION & ENVIRONMENT VARIABLES
 # ==========================================
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./echo_ai.db")
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
 SECRET_KEY = os.getenv("SECRET_KEY", "super-secret-key-change-this-in-production")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
@@ -68,18 +65,25 @@ class ThoughtDump(Base):
     parsed_data = Column(JSON, nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
-Base.metadata.create_all(bind=engine)
+try:
+    Base.metadata.create_all(bind=engine)
+    print("✅ Database tables verified/created successfully.")
+except Exception as e:
+    print(f"❌ Database connection/table creation error: {e}")
 
 # ==========================================
-# SECURITY & AUTH HELPERS
+# SECURITY & AUTH HELPERS (Direct Bcrypt)
 # ==========================================
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    try:
+        return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+    except Exception:
+        return False
 
-def verify_password(plain_password, hashed_password):
-    return pwd_context.verify(plain_password, hashed_password)
-
-def get_password_hash(password):
-    return pwd_context.hash(password)
+def get_password_hash(password: str) -> str:
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
+    return hashed.decode('utf-8')
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
@@ -178,7 +182,6 @@ Return ONLY a valid JSON object matching this schema:
 """
 
 def normalize_time_string(time_str: str) -> str:
-    """Fallback utility to clean up any messy time format to '12:30 PM'."""
     if not time_str:
         return ""
     clean = time_str.replace('.', '').strip().upper()
@@ -333,7 +336,6 @@ def forgot_password(data: ForgotPasswordSchema, background_tasks: BackgroundTask
     if not user:
         return {"message": "If the email exists, a reset link has been sent."}
 
-    # Generate a 30-minute secure reset token
     reset_token = create_access_token({"sub": user.email}, expires_delta=timedelta(minutes=30))
     
     protocol = "https" if "localhost" not in APP_DOMAIN else "http"
