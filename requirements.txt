@@ -2,11 +2,9 @@ fastapi
 uvicorn
 sqlalchemy
 psycopg2-binary
-pyjwt
-passlib[bcrypt]
-google-generativeai
-pydantic[email]
-python-multipart
-a2wsgi
-psycopg[binary]
+pydantic
+pydantic-settings
+python-jwt
+bcrypt
 resend
+google-generativeai

@@ -115,13 +115,13 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> Optiona
         return None
 
 # ==========================================
-# RESEND EMAIL DISPATCHER
+# RESEND EMAIL DISPATCHER (PRODUCTION DOMAIN)
 # ==========================================
 def send_email_notification(recipient_email: str, subject: str, body_content: str):
     print(f"📧 Dispatching professional HTML email via Resend API to {recipient_email}...")
     try:
         params = {
-            "from": "Echo AI <onboarding@resend.dev>",
+            "from": "Echo AI <support@echoai.buzz>",
             "to": [recipient_email],
             "subject": subject,
             "html": body_content,
