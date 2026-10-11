@@ -12,9 +12,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 import jwt
 import bcrypt
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+import resend
 import google.generativeai as genai
 
 # ==========================================
@@ -28,11 +26,9 @@ SECRET_KEY = os.getenv("SECRET_KEY", "super-secret-key-change-this-in-production
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
 
-# Email Configuration (SMTP)
-SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
-SMTP_PORT = int(os.getenv("SMTP_PORT", 587))
-SMTP_USERNAME = os.getenv("SMTP_USERNAME", "ibrahimmuhammadlawal491@gmail.com")
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "codk pems fpog hqiy")
+# Email Configuration (Resend API)
+RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
+resend.api_key = RESEND_API_KEY
 APP_DOMAIN = os.getenv("APP_DOMAIN", "echoai.buzz")
 
 # Gemini API Configuration
@@ -119,24 +115,21 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> Optiona
         return None
 
 # ==========================================
-# ASYNCHRONOUS EMAIL SENDER
+# RESEND EMAIL DISPATCHER
 # ==========================================
 def send_email_notification(recipient_email: str, subject: str, body_content: str):
+    print(f"📧 Dispatching professional HTML email via Resend API to {recipient_email}...")
     try:
-        msg = MIMEMultipart()
-        msg['From'] = SMTP_USERNAME
-        msg['To'] = recipient_email
-        msg['Subject'] = subject
-        msg.attach(MIMEText(body_content, 'html'))
-
-        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
-        server.starttls()
-        server.login(SMTP_USERNAME, SMTP_PASSWORD)
-        server.send_message(msg)
-        server.quit()
-        print(f"✅ Email successfully sent to {recipient_email}")
+        params = {
+            "from": "Echo AI <onboarding@resend.dev>",
+            "to": [recipient_email],
+            "subject": subject,
+            "html": body_content,
+        }
+        email_response = resend.Emails.send(params)
+        print(f"✅ Email successfully sent via Resend! ID: {email_response.get('id')}")
     except Exception as e:
-        print(f"❌ Failed to send email to {recipient_email}: {e}")
+        print(f"❌ CRITICAL RESEND ERROR for {recipient_email}: {str(e)}")
 
 # ==========================================
 # GEMINI AI SMART ENGINE & PUNCTUATOR
@@ -291,15 +284,21 @@ def register(user_data: RegisterSchema, background_tasks: BackgroundTasks, db: S
     db.refresh(new_user)
 
     email_body = f"""
-    <div style="font-family: Arial, sans-serif; padding: 20px; background: #0d1117; color: #c9d1d9; border-radius: 8px;">
-        <h2 style="color: #58a6ff;">Welcome to Echo AI! 🎉</h2>
-        <p>Your account (<strong>{user_data.email}</strong>) was created successfully.</p>
-        <p>You can now unload your mind, capture tasks, and organize your schedule seamlessly.</p>
-        <br>
-        <p style="font-size: 12px; color: #8b949e;">Echo AI Productivity Engine</p>
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #0d1117; padding: 40px 20px; color: #c9d1d9;">
+        <div style="max-width: 500px; margin: 0 auto; background-color: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 30px; box-shadow: 0 8px 24px rgba(0,0,0,0.5);">
+            <h2 style="color: #58a6ff; margin-top: 0; font-size: 24px;">Welcome to Echo AI! 🎉</h2>
+            <p style="font-size: 15px; color: #8b949e; line-height: 1.5;">Hi there,</p>
+            <p style="font-size: 15px; line-height: 1.5;">Your account (<strong style="color: #c9d1d9;">{user_data.email}</strong>) has been successfully created.</p>
+            <p style="font-size: 15px; line-height: 1.5;">You can now unload your mind, capture action tasks, and organize your daily schedule in seconds.</p>
+            <div style="margin: 30px 0; text-align: center;">
+                <a href="https://{APP_DOMAIN}" style="background-color: #007acc; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold; font-size: 14px;">Open Echo AI Workspace</a>
+            </div>
+            <hr style="border: none; border-top: 1px solid #30363d; margin: 25px 0;">
+            <p style="font-size: 12px; color: #8b949e; margin-bottom: 0; text-align: center;">Echo AI Productivity Engine &bull; Unload Your Mind</p>
+        </div>
     </div>
     """
-    background_tasks.add_task(send_email_notification, user_data.email, "Welcome to Echo AI!", email_body)
+    background_tasks.add_task(send_email_notification, user_data.email, "Welcome to Echo AI — Unload Your Mind", email_body)
 
     token = create_access_token({"sub": new_user.email})
     response = JSONResponse(content={"message": "Account created successfully"})
@@ -339,20 +338,25 @@ def forgot_password(data: ForgotPasswordSchema, background_tasks: BackgroundTask
         return {"message": "If the email exists, a reset link has been sent."}
 
     reset_token = create_access_token({"sub": user.email}, expires_delta=timedelta(minutes=30))
-    
     protocol = "https" if "localhost" not in APP_DOMAIN else "http"
     reset_link = f"{protocol}://{APP_DOMAIN}/reset-password?token={reset_token}"
 
     email_body = f"""
-    <div style="font-family: Arial, sans-serif; padding: 20px; background: #0d1117; color: #c9d1d9; border-radius: 8px;">
-        <h2 style="color: #58a6ff;">Password Reset Request</h2>
-        <p>You requested to reset your password for Echo AI.</p>
-        <p>Click the button below to set a new password. This link expires in 30 minutes:</p>
-        <a href="{reset_link}" style="background-color: #238636; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold; margin-top: 10px;">Reset Password</a>
-        <p style="margin-top: 20px; font-size: 12px; color: #8b949e;">If you didn't request this, please ignore this email.</p>
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #0d1117; padding: 40px 20px; color: #c9d1d9;">
+        <div style="max-width: 500px; margin: 0 auto; background-color: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 30px; box-shadow: 0 8px 24px rgba(0,0,0,0.5);">
+            <h2 style="color: #58a6ff; margin-top: 0; font-size: 24px;">Password Reset Request</h2>
+            <p style="font-size: 15px; line-height: 1.5;">You requested to reset your password for your Echo AI account.</p>
+            <p style="font-size: 15px; line-height: 1.5;">Click the secure button below to set a new password. This link will expire in <strong style="color: #f85149;">30 minutes</strong>:</p>
+            <div style="margin: 30px 0; text-align: center;">
+                <a href="{reset_link}" style="background-color: #238636; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold; font-size: 14px;">Reset Your Password</a>
+            </div>
+            <p style="font-size: 13px; color: #8b949e; line-height: 1.4;">If you didn't request this change, please ignore this email or secure your account.</p>
+            <hr style="border: none; border-top: 1px solid #30363d; margin: 25px 0;">
+            <p style="font-size: 12px; color: #8b949e; margin-bottom: 0; text-align: center;">Echo AI Productivity Engine &bull; Security Team</p>
+        </div>
     </div>
     """
-    background_tasks.add_task(send_email_notification, user.email, "Echo AI - Password Reset Link", email_body)
+    background_tasks.add_task(send_email_notification, user.email, "Echo AI - Secure Password Reset Link", email_body)
     return {"message": "If the email exists, a reset link has been sent."}
 
 @app.post("/api/reset-password")
@@ -398,7 +402,7 @@ def update_dump(dump_id: int, dump: DumpSchema, request: Request, db: Session = 
 
     db_dump = db.query(ThoughtDump).filter(ThoughtDump.id == dump_id, ThoughtDump.user_id == user.id).first()
     if not db_dump:
-        raise HTTPException(status_update=404, detail="Dump entry not found")
+        raise HTTPException(status_code=404, detail="Dump entry not found")
 
     parsed_result = parse_with_gemini(dump.raw_text)
     saved_text = parsed_result.get("cleaned_text", dump.raw_text)

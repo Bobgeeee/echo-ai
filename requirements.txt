@@ -9,3 +9,4 @@ pydantic[email]
 python-multipart
 a2wsgi
 psycopg[binary]
+resend
