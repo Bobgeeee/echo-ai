@@ -27,6 +27,7 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
 
 # Email Configuration (Resend API)
+# MAKE SURE 'RESEND_API_KEY' IS SET IN YOUR RENDER ENVIRONMENT VARIABLES
 RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
 resend.api_key = RESEND_API_KEY
 APP_DOMAIN = os.getenv("APP_DOMAIN", "echoai.buzz")
@@ -115,13 +116,14 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> Optiona
         return None
 
 # ==========================================
-# RESEND EMAIL DISPATCHER (PRODUCTION DOMAIN)
+# RESEND EMAIL DISPATCHER (SANDBOX MODE BYPASSED)
 # ==========================================
 def send_email_notification(recipient_email: str, subject: str, body_content: str):
     print(f"📧 Dispatching professional HTML email via Resend API to {recipient_email}...")
     try:
         params = {
-            "from": "Echo AI <support@echoai.buzz>",
+            # Using Resend's instant sandbox email to avoid custom domain DNS blockages
+            "from": "onboarding@resend.dev",
             "to": [recipient_email],
             "subject": subject,
             "html": body_content,
@@ -430,6 +432,7 @@ def get_history(request: Request, db: Session = Depends(get_db)):
         }
         for d in dumps
     ]
+
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8000))
