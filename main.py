@@ -1,6 +1,9 @@
 import os
 import re
 import json
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timezone, timedelta
 from typing import Optional, List
 from fastapi import FastAPI, HTTPException, Depends, Request, Response, BackgroundTasks, status
@@ -12,7 +15,6 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 import jwt
 import bcrypt
-import resend
 import google.generativeai as genai
 
 # ==========================================
@@ -26,10 +28,14 @@ SECRET_KEY = os.getenv("SECRET_KEY", "super-secret-key-change-this-in-production
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
 
-# Email Configuration (Resend API)
-RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
-resend.api_key = RESEND_API_KEY
+# App Domain Configuration
 APP_DOMAIN = os.getenv("APP_DOMAIN", "echoai.buzz")
+
+# Gmail SMTP Configuration
+SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+SMTP_USER = os.getenv("SMTP_USER", "")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
 
 # Gemini API Configuration
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY")
@@ -115,21 +121,31 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> Optiona
         return None
 
 # ==========================================
-# RESEND EMAIL DISPATCHER (PRODUCTION DOMAIN)
+# GMAIL SMTP EMAIL DISPATCHER
 # ==========================================
 def send_email_notification(recipient_email: str, subject: str, body_content: str):
-    print(f"📧 Dispatching professional HTML email via Resend API to {recipient_email}...")
+    print(f"📧 Dispatching professional HTML email via Gmail SMTP to {recipient_email}...")
+    if not SMTP_USER or not SMTP_PASSWORD:
+        print("❌ SMTP credentials (SMTP_USER, SMTP_PASSWORD) are not set in environment variables.")
+        return
+
     try:
-        params = {
-            "from": "Echo AI <support@echoai.buzz>",
-            "to": [recipient_email],
-            "subject": subject,
-            "html": body_content,
-        }
-        email_response = resend.Emails.send(params)
-        print(f"✅ Email successfully sent via Resend! ID: {email_response.get('id')}")
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = subject
+        msg["From"] = f"Echo AI <{SMTP_USER}>"
+        msg["To"] = recipient_email
+
+        html_part = MIMEText(body_content, "html")
+        msg.attach(html_part)
+
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+            server.starttls()
+            server.login(SMTP_USER, SMTP_PASSWORD)
+            server.sendmail(SMTP_USER, recipient_email, msg.as_string())
+            
+        print(f"✅ Email successfully sent via Gmail SMTP to {recipient_email}!")
     except Exception as e:
-        print(f"❌ CRITICAL RESEND ERROR for {recipient_email}: {str(e)}")
+        print(f"❌ CRITICAL SMTP ERROR for {recipient_email}: {str(e)}")
 
 # ==========================================
 # GEMINI AI SMART ENGINE & PUNCTUATOR
@@ -378,7 +394,7 @@ def reset_password(data: ResetPasswordSchema, db: Session = Depends(get_db)):
 def process_dump(dump: DumpSchema, request: Request, db: Session = Depends(get_db)):
     user = get_current_user(request, db)
     if not user:
-        raise HTTPException(status_code=401, detail="Please sign in to save dumps")
+        raise HTTPException(status_status_code=401, detail="Please sign in to save dumps") # type: ignore
 
     parsed_result = parse_with_gemini(dump.raw_text)
     saved_text = parsed_result.get("cleaned_text", dump.raw_text)
