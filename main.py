@@ -42,6 +42,14 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY")
 genai.configure(api_key=GEMINI_API_KEY)
 
 # ==========================================
+# FASTAPI APP & STATIC FILES MOUNT
+# ==========================================
+app = FastAPI(title="Echo AI Engine")
+
+# Mount the static directory to serve static assets like favicon.png
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# ==========================================
 # DATABASE SETUP
 # ==========================================
 if DATABASE_URL.startswith("sqlite"):
@@ -255,10 +263,8 @@ def parse_with_gemini(raw_text: str) -> dict:
         }
 
 # ==========================================
-# FASTAPI APP & ROUTES
+# APP ROUTES
 # ==========================================
-app = FastAPI(title="Echo AI Engine")
-
 class RegisterSchema(BaseModel):
     email: EmailStr
     password: str
@@ -394,7 +400,7 @@ def reset_password(data: ResetPasswordSchema, db: Session = Depends(get_db)):
 def process_dump(dump: DumpSchema, request: Request, db: Session = Depends(get_db)):
     user = get_current_user(request, db)
     if not user:
-        raise HTTPException(status_status_code=401, detail="Please sign in to save dumps") # type: ignore
+        raise HTTPException(status_code=401, detail="Please sign in to save dumps")
 
     parsed_result = parse_with_gemini(dump.raw_text)
     saved_text = parsed_result.get("cleaned_text", dump.raw_text)
