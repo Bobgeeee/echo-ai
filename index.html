@@ -7,8 +7,8 @@
     
     <!-- SEO & Favicon -->
     <meta name="description" content="Echo AI transforms unstructured voice notes and thoughts into structured calendar events, tasks, and notes in seconds.">
-    <link rel="icon" type="image/png" href="https://echoai.buzz/static/favicon.png">
-    <link rel="apple-touch-icon" href="https://echoai.buzz/static/favicon.png">
+    <link rel="icon" type="image/png" href="/static/favicon.png">
+    <link rel="apple-touch-icon" href="/static/favicon.png">
     
     <!-- PWA Web App Manifest -->
     <meta name="mobile-web-app-capable" content="yes">
@@ -788,7 +788,7 @@
                     const data = await res.json();
                     renderResults(data);
                     
-                    // Automatically clear text input after successful processing
+                    // Automatically clear the text box immediately upon successful processing
                     document.getElementById("rawInputText").value = "";
                     document.getElementById("statusText").innerText = "Processed & cleared!";
                     
@@ -812,7 +812,6 @@
 
             if (data.calendar_events && data.calendar_events.length > 0) {
                 data.calendar_events.forEach(ev => {
-                    // Parse event time for alarm timer
                     try {
                         let parsedTime = new Date();
                         let parts = ev.time.match(/(\d+):(\d+)\s*(AM|PM)/i);
@@ -823,7 +822,6 @@
                             if (parts[3].toUpperCase() === 'AM' && hours === 12) hours = 0;
                             parsedTime.setHours(hours, mins, 0, 0);
                             
-                            // Prevent duplicate event scheduling
                             if (!scheduledEventsList.some(e => e.title === ev.title && e.timeStr === ev.time)) {
                                 scheduledEventsList.push({ title: ev.title, parsedTime: parsedTime, timeStr: ev.time, notified: false });
                             }
@@ -888,7 +886,7 @@
         }
 
         async function triggerForgotPassword() {
-            const email = document.getElementById("authEmail", "").value;
+            const email = document.getElementById("authEmail").value;
             if (!email) {
                 alert("Please enter your email address in the email field first.");
                 return;
