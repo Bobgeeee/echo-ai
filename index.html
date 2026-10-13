@@ -7,8 +7,10 @@
     
     <!-- SEO & Favicon -->
     <meta name="description" content="Echo AI transforms unstructured voice notes and thoughts into structured calendar events, tasks, and notes in seconds.">
+    <link rel="icon" type="image/png" href="https://echoai.buzz/static/favicon.png">
+    <link rel="apple-touch-icon" href="https://echoai.buzz/static/favicon.png">
     
-    <!-- PWA Web App Manifest (Allows Saving to Mobile Phone Menu) -->
+    <!-- PWA Web App Manifest -->
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -625,7 +627,7 @@
                         }
                     }
                 });
-            }, 30000); // Check every 30 seconds
+            }, 10000); // Check every 10 seconds for high precision
         }
 
         /* --- SPEECH RECOGNITION (VOICE TO TEXT) --- */
@@ -691,7 +693,6 @@
         /* --- TIME & TEXT NORMALIZATION --- */
         function cleanAndNormalizeText(text) {
             if (!text) return text;
-            // Clean unformatted numbers like "10 15" into "10:15"
             return text.replace(/(\b\d{1,2})\s+(\d{2})\b/g, '$1:$2');
         }
 
@@ -786,8 +787,11 @@
                 if (res.ok) {
                     const data = await res.json();
                     renderResults(data);
-                    document.getElementById("statusText").innerText = "Processed successfully!";
-                    triggerPopUp("Echo AI Event Saved", "Your brain dump has been processed into tasks and calendar events.");
+                    
+                    // Automatically clear text input after successful processing
+                    document.getElementById("rawInputText").value = "";
+                    document.getElementById("statusText").innerText = "Processed & cleared!";
+                    
                     loadHistory();
                 } else {
                     document.getElementById("statusText").innerText = "Error processing dump.";
@@ -818,7 +822,11 @@
                             if (parts[3].toUpperCase() === 'PM' && hours < 12) hours += 12;
                             if (parts[3].toUpperCase() === 'AM' && hours === 12) hours = 0;
                             parsedTime.setHours(hours, mins, 0, 0);
-                            scheduledEventsList.push({ title: ev.title, parsedTime: parsedTime, notified: false });
+                            
+                            // Prevent duplicate event scheduling
+                            if (!scheduledEventsList.some(e => e.title === ev.title && e.timeStr === ev.time)) {
+                                scheduledEventsList.push({ title: ev.title, parsedTime: parsedTime, timeStr: ev.time, notified: false });
+                            }
                         }
                     } catch (e) {}
 
@@ -880,7 +888,7 @@
         }
 
         async function triggerForgotPassword() {
-            const email = document.getElementById("authEmail").value;
+            const email = document.getElementById("authEmail", "").value;
             if (!email) {
                 alert("Please enter your email address in the email field first.");
                 return;
