@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Echo AI — Unload Your Mind. Structured in Seconds.</title>
+    
+    <!-- SEO & Favicon -->
+    <meta name="description" content="Echo AI transforms unstructured voice notes and thoughts into structured calendar events, tasks, and notes in seconds.">
+    <link rel="icon" type="image/png" href="/static/favicon.png">
+    
     <style>
         :root {
             --bg-color: #0d1117;
@@ -72,7 +77,7 @@
             background-color: var(--surface-color);
             color: var(--text-primary);
             border: 1px solid var(--border-color);
-            padding: 6px 14px;
+            padding: 8px 14px;
             border-radius: 6px;
             cursor: pointer;
             font-size: 0.85rem;
@@ -102,6 +107,42 @@
 
         .btn-danger:hover {
             background-color: rgba(248, 81, 73, 0.1);
+        }
+
+        .btn-mic {
+            background-color: var(--surface-color);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-mic.recording {
+            background-color: var(--accent-danger);
+            color: white;
+            border-color: var(--accent-danger);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.6; }
+            100% { opacity: 1; }
+        }
+
+        /* NOTIFICATION BANNER */
+        .notification-banner {
+            background-color: #1f2937;
+            border-bottom: 1px solid var(--border-color);
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+            color: var(--text-primary);
+            flex-wrap: wrap;
+            gap: 10px;
         }
 
         /* MAIN RESPONSIVE LAYOUT */
@@ -238,6 +279,12 @@
             align-items: center;
             flex-wrap: wrap;
             gap: 10px;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            align-items: center;
         }
 
         /* DASHBOARD RESULTS GRID */
@@ -383,6 +430,12 @@
         </div>
     </header>
 
+    <!-- NOTIFICATION BANNER -->
+    <div class="notification-banner" id="notificationBanner" style="display: none;">
+        <span>🔔 Enable notifications to get pop-up alerts on phone or desktop.</span>
+        <button class="btn btn-primary" onclick="enableNotifications()">Enable Pop-up Alerts</button>
+    </div>
+
     <!-- MAIN APP CONTAINER -->
     <div class="app-container">
         <!-- SIDEBAR -->
@@ -399,10 +452,15 @@
         <!-- WORKSPACE -->
         <div class="workspace">
             <div class="input-card">
-                <textarea id="rawInputText" placeholder="Unload your mind here... Type thoughts, meetings, or tasks."></textarea>
+                <textarea id="rawInputText" placeholder="Click 'Start Talking' or type your thought dump..."></textarea>
                 <div class="input-actions">
                     <span id="statusText" style="font-size: 0.8rem; color: var(--text-secondary);">Ready to process</span>
-                    <button class="btn btn-primary" onclick="processDump()">Process with AI</button>
+                    <div class="action-buttons">
+                        <button class="btn btn-mic" id="micBtn" onclick="toggleRecording()">
+                            <span>🎙️</span> <span id="micText">Start Talking</span>
+                        </button>
+                        <button class="btn btn-primary" onclick="processDump()">Process with AI</button>
+                    </div>
                 </div>
             </div>
 
@@ -457,12 +515,116 @@
 
     <script>
         let isSignUpMode = false;
+        let recognition = null;
+        let isRecording = false;
 
         window.addEventListener("DOMContentLoaded", () => {
             checkAuth();
             loadHistory();
+            initSpeechRecognition();
+            checkNotificationPermission();
         });
 
+        /* --- NOTIFICATION LOGIC --- */
+        function checkNotificationPermission() {
+            const banner = document.getElementById("notificationBanner");
+            if ("Notification" in window) {
+                if (Notification.permission !== "granted") {
+                    banner.style.display = "flex";
+                } else {
+                    banner.style.display = "none";
+                }
+            }
+        }
+
+        async function enableNotifications() {
+            if (!("Notification" in window)) {
+                alert("Pop-up notifications are not supported on this browser version.");
+                return;
+            }
+            const permission = await Notification.requestPermission();
+            const banner = document.getElementById("notificationBanner");
+            if (permission === "granted") {
+                banner.style.display = "none";
+                new Notification("Echo AI Alerts Active", {
+                    body: "Pop-up notifications enabled! You will be alerted when tasks or events are processed.",
+                    icon: "/static/favicon.png"
+                });
+            } else {
+                alert("Notification permissions were denied in browser settings.");
+            }
+        }
+
+        function triggerPopUp(title, bodyText) {
+            if ("Notification" in window && Notification.permission === "granted") {
+                new Notification(title, {
+                    body: bodyText,
+                    icon: "/static/favicon.png"
+                });
+            }
+        }
+
+        /* --- SPEECH RECOGNITION (VOICE TO TEXT) --- */
+        function initSpeechRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (SpeechRecognition) {
+                recognition = new SpeechRecognition();
+                recognition.continuous = true;
+                recognition.interimResults = true;
+                recognition.lang = 'en-US';
+
+                recognition.onresult = (event) => {
+                    let transcript = '';
+                    for (let i = event.resultIndex; i < event.results.length; i++) {
+                        transcript += event.results[i][0].transcript;
+                    }
+                    document.getElementById("rawInputText").value = transcript;
+                };
+
+                recognition.onerror = (event) => {
+                    console.error("Speech recognition error", event.error);
+                    stopRecordingUI();
+                };
+
+                recognition.onend = () => {
+                    stopRecordingUI();
+                };
+            }
+        }
+
+        function toggleRecording() {
+            if (!recognition) {
+                alert("Speech recognition is not supported on this browser. Please type your thoughts instead.");
+                return;
+            }
+
+            if (isRecording) {
+                recognition.stop();
+                stopRecordingUI();
+            } else {
+                try {
+                    recognition.start();
+                    isRecording = true;
+                    document.getElementById("micBtn").classList.add("recording");
+                    document.getElementById("micText").innerText = "Listening...";
+                    document.getElementById("statusText").innerText = "Listening to your voice...";
+                } catch (err) {
+                    console.error("Failed to start recording", err);
+                }
+            }
+        }
+
+        function stopRecordingUI() {
+            isRecording = false;
+            const micBtn = document.getElementById("micBtn");
+            if (micBtn) {
+                micBtn.classList.remove("recording");
+                document.getElementById("micText").innerText = "Start Talking";
+                document.getElementById("statusText").innerText = "Ready to process";
+            }
+        }
+
+        /* --- AUTHENTICATION LOGIC --- */
         async function checkAuth() {
             try {
                 const res = await fetch("/api/me");
@@ -536,6 +698,7 @@
             window.location.reload();
         }
 
+        /* --- AI DUMP PROCESSING --- */
         async function processDump() {
             const raw_text = document.getElementById("rawInputText").value;
             if (!raw_text.trim()) return;
@@ -551,6 +714,7 @@
                     const data = await res.json();
                     renderResults(data);
                     document.getElementById("statusText").innerText = "Processed successfully!";
+                    triggerPopUp("Echo AI Event Saved", "Your brain dump has been processed into tasks and calendar events.");
                     loadHistory();
                 } else {
                     document.getElementById("statusText").innerText = "Error processing dump.";
