@@ -7,7 +7,6 @@
     
     <!-- SEO & Favicon -->
     <meta name="description" content="Echo AI transforms unstructured voice notes and thoughts into structured calendar events, tasks, and notes in seconds.">
-    <link rel="icon" type="image/png" href="/static/favicon.png">
     
     <!-- PWA Web App Manifest (Allows Saving to Mobile Phone Menu) -->
     <meta name="mobile-web-app-capable" content="yes">
@@ -441,7 +440,7 @@
 
     <!-- NOTIFICATION & INSTALL BANNER -->
     <div class="notification-banner" id="notificationBanner" style="display: none;">
-        <span>🔔 Enable notifications to receive pop-up alerts for scheduled items on mobile & laptop.</span>
+        <span>🔔 Enable notifications to receive pop-up alerts with sound when scheduled items are due.</span>
         <button class="btn btn-primary" onclick="enableNotifications()">Enable Pop-up Alerts</button>
     </div>
 
@@ -526,12 +525,14 @@
         let isSignUpMode = false;
         let recognition = null;
         let isRecording = false;
+        let scheduledEventsList = [];
 
         window.addEventListener("DOMContentLoaded", () => {
             checkAuth();
             loadHistory();
             initSpeechRecognition();
             checkNotificationPermission();
+            startAlarmChecker();
         });
 
         /* --- SHARE APP / SAVE TO HOME SCREEN --- */
@@ -548,11 +549,11 @@
                 }
             } else {
                 navigator.clipboard.writeText(window.location.href);
-                alert("App link copied to clipboard! Share it with your friends or open in Safari/Chrome and select 'Add to Home Screen' to save it as an app menu icon.");
+                alert("App link copied! Open in your phone browser (Safari/Chrome) and select 'Add to Home Screen' to save it as a native app icon.");
             }
         }
 
-        /* --- NOTIFICATION LOGIC --- */
+        /* --- NOTIFICATION & ALARM SOUND LOGIC --- */
         function checkNotificationPermission() {
             const banner = document.getElementById("notificationBanner");
             if ("Notification" in window) {
@@ -573,22 +574,58 @@
             const banner = document.getElementById("notificationBanner");
             if (permission === "granted") {
                 banner.style.display = "none";
+                playAlarmBeep();
                 new Notification("Echo AI Alerts Active", {
-                    body: "Pop-up notifications enabled! You will be alerted when tasks or events are processed.",
-                    icon: "/static/favicon.png"
+                    body: "Pop-up notifications & sound enabled! You will be alerted when scheduled event times arrive."
                 });
             } else {
                 alert("Notification permissions were denied in browser settings.");
             }
         }
 
+        function playAlarmBeep() {
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5 note
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.5);
+            } catch (err) {
+                console.log("Audio beep prevented", err);
+            }
+        }
+
         function triggerPopUp(title, bodyText) {
+            playAlarmBeep();
             if ("Notification" in window && Notification.permission === "granted") {
                 new Notification(title, {
                     body: bodyText,
-                    icon: "/static/favicon.png"
+                    requireInteraction: true
                 });
             }
+        }
+
+        function startAlarmChecker() {
+            setInterval(() => {
+                const now = new Date();
+                const currentHour = now.getHours();
+                const currentMinute = now.getMinutes();
+
+                scheduledEventsList.forEach(ev => {
+                    if (ev.notified) return;
+                    if (ev.parsedTime) {
+                        if (ev.parsedTime.getHours() === currentHour && ev.parsedTime.getMinutes() === currentMinute) {
+                            ev.notified = true;
+                            triggerPopUp("⏰ Scheduled Event Due!", `Event: ${ev.title}`);
+                        }
+                    }
+                });
+            }, 30000); // Check every 30 seconds
         }
 
         /* --- SPEECH RECOGNITION (VOICE TO TEXT) --- */
@@ -771,6 +808,20 @@
 
             if (data.calendar_events && data.calendar_events.length > 0) {
                 data.calendar_events.forEach(ev => {
+                    // Parse event time for alarm timer
+                    try {
+                        let parsedTime = new Date();
+                        let parts = ev.time.match(/(\d+):(\d+)\s*(AM|PM)/i);
+                        if (parts) {
+                            let hours = parseInt(parts[1]);
+                            let mins = parseInt(parts[2]);
+                            if (parts[3].toUpperCase() === 'PM' && hours < 12) hours += 12;
+                            if (parts[3].toUpperCase() === 'AM' && hours === 12) hours = 0;
+                            parsedTime.setHours(hours, mins, 0, 0);
+                            scheduledEventsList.push({ title: ev.title, parsedTime: parsedTime, notified: false });
+                        }
+                    } catch (e) {}
+
                     calList.innerHTML += `<li class="card-item"><strong>${ev.title}</strong><br><span style="color:var(--text-secondary);font-size:0.75rem;">${ev.day_or_date} @ ${ev.time}</span></li>`;
                 });
             } else {
