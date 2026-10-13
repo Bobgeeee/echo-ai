@@ -9,6 +9,13 @@
     <meta name="description" content="Echo AI transforms unstructured voice notes and thoughts into structured calendar events, tasks, and notes in seconds.">
     <link rel="icon" type="image/png" href="/static/favicon.png">
     
+    <!-- PWA Web App Manifest (Allows Saving to Mobile Phone Menu) -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Echo AI">
+    <link rel="manifest" href="data:application/manifest+json;utf8,{%22name%22:%22Echo%20AI%22,%22short_name%22:%22EchoAI%22,%22start_url%22:%22/%22,%22display%22:%22standalone%22,%22background_color%22:%22#0d1117%22,%22theme_color%22:%22#161b22%22}">
+
     <style>
         :root {
             --bg-color: #0d1117;
@@ -131,7 +138,7 @@
             100% { opacity: 1; }
         }
 
-        /* NOTIFICATION BANNER */
+        /* NOTIFICATION & INSTALL BANNER */
         .notification-banner {
             background-color: #1f2937;
             border-bottom: 1px solid var(--border-color);
@@ -285,6 +292,7 @@
             display: flex;
             gap: 10px;
             align-items: center;
+            flex-wrap: wrap;
         }
 
         /* DASHBOARD RESULTS GRID */
@@ -425,14 +433,15 @@
             <h1>Echo AI</h1>
         </div>
         <div class="user-nav">
+            <button class="btn" onclick="shareApp()">📲 Share App</button>
             <span class="user-email" id="userEmailDisplay"></span>
             <button class="btn btn-danger hidden" id="logoutBtn" onclick="logoutUser()">Sign Out</button>
         </div>
     </header>
 
-    <!-- NOTIFICATION BANNER -->
+    <!-- NOTIFICATION & INSTALL BANNER -->
     <div class="notification-banner" id="notificationBanner" style="display: none;">
-        <span>🔔 Enable notifications to get pop-up alerts on phone or desktop.</span>
+        <span>🔔 Enable notifications to receive pop-up alerts for scheduled items on mobile & laptop.</span>
         <button class="btn btn-primary" onclick="enableNotifications()">Enable Pop-up Alerts</button>
     </div>
 
@@ -524,6 +533,24 @@
             initSpeechRecognition();
             checkNotificationPermission();
         });
+
+        /* --- SHARE APP / SAVE TO HOME SCREEN --- */
+        async function shareApp() {
+            if (navigator.share) {
+                try {
+                    await navigator.share({
+                        title: 'Echo AI',
+                        text: 'Unload your mind with Echo AI. Convert thoughts into structured tasks & calendar events.',
+                        url: window.location.href,
+                    });
+                } catch (err) {
+                    console.log("Share cancelled or failed", err);
+                }
+            } else {
+                navigator.clipboard.writeText(window.location.href);
+                alert("App link copied to clipboard! Share it with your friends or open in Safari/Chrome and select 'Add to Home Screen' to save it as an app menu icon.");
+            }
+        }
 
         /* --- NOTIFICATION LOGIC --- */
         function checkNotificationPermission() {
@@ -624,6 +651,13 @@
             }
         }
 
+        /* --- TIME & TEXT NORMALIZATION --- */
+        function cleanAndNormalizeText(text) {
+            if (!text) return text;
+            // Clean unformatted numbers like "10 15" into "10:15"
+            return text.replace(/(\b\d{1,2})\s+(\d{2})\b/g, '$1:$2');
+        }
+
         /* --- AUTHENTICATION LOGIC --- */
         async function checkAuth() {
             try {
@@ -700,8 +734,10 @@
 
         /* --- AI DUMP PROCESSING --- */
         async function processDump() {
-            const raw_text = document.getElementById("rawInputText").value;
+            let raw_text = document.getElementById("rawInputText").value;
             if (!raw_text.trim()) return;
+
+            raw_text = cleanAndNormalizeText(raw_text);
 
             document.getElementById("statusText").innerText = "Processing with AI...";
             try {
