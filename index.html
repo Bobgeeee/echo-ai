@@ -4,11 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Echo AI — Unload Your Mind. Structured in Seconds.</title>
-    
+        
     <!-- SEO & Favicon -->
     <meta name="description" content="Echo AI transforms unstructured voice notes and thoughts into structured calendar events, tasks, and notes in seconds.">
-    
-    <!-- PWA Web App Manifest (Allows Saving to Mobile Phone Menu) -->
+    <link rel="icon" type="image/png" href="https://echoai.buzz/static/favicon.png">
+    <link rel="shortcut icon" type="image/png" href="https://echoai.buzz/static/favicon.png">
+    <link rel="apple-touch-icon" href="https://echoai.buzz/static/favicon.png">
+
+    <!-- PWA Web App Manifest -->
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -151,6 +154,25 @@
             gap: 10px;
         }
 
+        /* PUBLIC SEO LANDING BANNER */
+        .seo-intro {
+            padding: 15px 20px;
+            background: var(--surface-color);
+            border-bottom: 1px solid var(--border-color);
+            text-align: center;
+        }
+
+        .seo-intro h2 {
+            font-size: 1rem;
+            color: var(--accent-blue);
+            margin-bottom: 4px;
+        }
+
+        .seo-intro p {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
         /* MAIN RESPONSIVE LAYOUT */
         .app-container {
             display: flex;
@@ -184,7 +206,7 @@
                 border-bottom: none;
                 border-right: 1px solid var(--border-color);
                 max-height: none;
-                height: calc(100vh - 61px);
+                height: calc(100vh - 110px);
             }
         }
 
@@ -437,6 +459,12 @@
             <button class="btn btn-danger hidden" id="logoutBtn" onclick="logoutUser()">Sign Out</button>
         </div>
     </header>
+
+    <!-- PUBLIC SEO INTRO (Crawlers read this to clear Soft 404) -->
+    <div class="seo-intro">
+        <h2>Unload Your Mind. Structured in Seconds.</h2>
+        <p>Echo AI transforms unstructured voice notes, thoughts, and ideas into organized calendar events and tasks automatically.</p>
+    </div>
 
     <!-- NOTIFICATION & INSTALL BANNER -->
     <div class="notification-banner" id="notificationBanner" style="display: none;">
@@ -691,7 +719,6 @@
         /* --- TIME & TEXT NORMALIZATION --- */
         function cleanAndNormalizeText(text) {
             if (!text) return text;
-            // Clean unformatted numbers like "10 15" into "10:15"
             return text.replace(/(\b\d{1,2})\s+(\d{2})\b/g, '$1:$2');
         }
 
@@ -786,6 +813,7 @@
                 if (res.ok) {
                     const data = await res.json();
                     renderResults(data);
+                    document.getElementById("rawInputText").value = "";
                     document.getElementById("statusText").innerText = "Processed successfully!";
                     triggerPopUp("Echo AI Event Saved", "Your brain dump has been processed into tasks and calendar events.");
                     loadHistory();
@@ -808,7 +836,6 @@
 
             if (data.calendar_events && data.calendar_events.length > 0) {
                 data.calendar_events.forEach(ev => {
-                    // Parse event time for alarm timer
                     try {
                         let parsedTime = new Date();
                         let parts = ev.time.match(/(\d+):(\d+)\s*(AM|PM)/i);
