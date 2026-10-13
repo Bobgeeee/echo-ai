@@ -7,10 +7,8 @@
     
     <!-- SEO & Favicon -->
     <meta name="description" content="Echo AI transforms unstructured voice notes and thoughts into structured calendar events, tasks, and notes in seconds.">
-    <link rel="icon" type="image/png" href="https://echoai.buzz/static/favicon.png">
-<link rel="shortcut icon" type="image/png" href="https://echoai.buzz/static/favicon.png">
-<link rel="apple-touch-icon" href="https://echoai.buzz/static/favicon.png">
-    <!-- PWA Web App Manifest -->
+    
+    <!-- PWA Web App Manifest (Allows Saving to Mobile Phone Menu) -->
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -627,7 +625,7 @@
                         }
                     }
                 });
-            }, 10000); // Check every 10 seconds for high precision
+            }, 30000); // Check every 30 seconds
         }
 
         /* --- SPEECH RECOGNITION (VOICE TO TEXT) --- */
@@ -693,6 +691,7 @@
         /* --- TIME & TEXT NORMALIZATION --- */
         function cleanAndNormalizeText(text) {
             if (!text) return text;
+            // Clean unformatted numbers like "10 15" into "10:15"
             return text.replace(/(\b\d{1,2})\s+(\d{2})\b/g, '$1:$2');
         }
 
@@ -787,11 +786,8 @@
                 if (res.ok) {
                     const data = await res.json();
                     renderResults(data);
-                    
-                    // Automatically clear the text box immediately upon successful processing
-                    document.getElementById("rawInputText").value = "";
-                    document.getElementById("statusText").innerText = "Processed & cleared!";
-                    
+                    document.getElementById("statusText").innerText = "Processed successfully!";
+                    triggerPopUp("Echo AI Event Saved", "Your brain dump has been processed into tasks and calendar events.");
                     loadHistory();
                 } else {
                     document.getElementById("statusText").innerText = "Error processing dump.";
@@ -812,6 +808,7 @@
 
             if (data.calendar_events && data.calendar_events.length > 0) {
                 data.calendar_events.forEach(ev => {
+                    // Parse event time for alarm timer
                     try {
                         let parsedTime = new Date();
                         let parts = ev.time.match(/(\d+):(\d+)\s*(AM|PM)/i);
@@ -821,10 +818,7 @@
                             if (parts[3].toUpperCase() === 'PM' && hours < 12) hours += 12;
                             if (parts[3].toUpperCase() === 'AM' && hours === 12) hours = 0;
                             parsedTime.setHours(hours, mins, 0, 0);
-                            
-                            if (!scheduledEventsList.some(e => e.title === ev.title && e.timeStr === ev.time)) {
-                                scheduledEventsList.push({ title: ev.title, parsedTime: parsedTime, timeStr: ev.time, notified: false });
-                            }
+                            scheduledEventsList.push({ title: ev.title, parsedTime: parsedTime, notified: false });
                         }
                     } catch (e) {}
 
