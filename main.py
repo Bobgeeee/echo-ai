@@ -359,6 +359,25 @@ def forgot_password(data: ForgotPasswordSchema, background_tasks: BackgroundTask
     if not user:
         return {"message": "If the email exists, a reset link has been sent."}
 
+    # Replace 'get_current_user' with whichever dependency function handles user auth in your main.py
+@app.get("/api/debug/users")
+def get_all_users(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    # Restrict access so only your email can view all users
+    ADMIN_EMAIL = "ibrahimmuhammadlawal491@gmail.com"  # Your account email
+    
+    if current_user.email != ADMIN_EMAIL:
+        raise HTTPException(status_code=403, detail="Unauthorized access")
+        
+    users = db.query(User).all()
+    return [
+        {
+            "id": u.id,
+            "email": u.email,
+            "created_at": u.created_at.isoformat() if hasattr(u, "created_at") and u.created_at else None
+        }
+        for u in users
+    ]
+
     reset_token = create_access_token({"sub": user.email}, expires_delta=timedelta(minutes=30))
     protocol = "https" if "localhost" not in APP_DOMAIN else "http"
     reset_link = f"{protocol}://{APP_DOMAIN}/reset-password?token={reset_token}"
