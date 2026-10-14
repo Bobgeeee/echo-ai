@@ -458,33 +458,4 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
     uvicorn.run("main:app", host="0.0.0.0", port=port)
 
-    @app.post("/api/forgot-password")
-def forgot_password(data: ForgotPasswordSchema, background_tasks: BackgroundTask):
-    # Your existing forgot password logic stays intact here...
-    user = db.query(User).filter(User.email == data.email).first()
-    if not user:
-        return {"message": "If the email exists, a reset link has been sent."}
     
-    reset_token = create_access_token({"sub": user.email}, expires_delta=timedelta(minutes=30))
-    protocol = "https" if "localhost" not in APP_DOMAIN else "http"
-    reset_link = f"{protocol}://{APP_DOMAIN}/reset-password?token={reset_token}"
-    # ... (rest of your forgot password code)
-
-
-# --- SECURED ADMIN USERS DEBUG ROUTE (Placed cleanly at the bottom) ---
-@app.get("/api/debug/users")
-def get_all_users(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    ADMIN_EMAIL = "ibrahimmuhammadlawal491@gmail.com"  # Your account email
-    
-    if current_user.email != ADMIN_EMAIL:
-        raise HTTPException(status_code=403, detail="Unauthorized access")
-        
-    users = db.query(User).all()
-    return [
-        {
-            "id": u.id,
-            "email": u.email,
-            "created_at": u.created_at.isoformat() if hasattr(u, "created_at") and u.created_at else None
-        }
-        for u in users
-    ]
