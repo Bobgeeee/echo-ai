@@ -6,7 +6,7 @@
     <title>Echo AI — Unload Your Mind. Structured in Seconds.</title>
         
     <!-- SEO & Favicon -->
-    <meta name="description" content="Echo AI transforms unstructured voice notes and thoughts into structured calendar events, tasks, and notes in seconds."[cite: 5]>
+    <meta name="description" content="Echo AI transforms unstructured voice notes and thoughts into structured calendar events, tasks, and notes in seconds.">
     <link rel="icon" type="image/png" href="https://echoai.buzz/static/favicon.png">
     <link rel="shortcut icon" type="image/png" href="https://echoai.buzz/static/favicon.png">
     <link rel="apple-touch-icon" href="https://echoai.buzz/static/favicon.png">
@@ -532,7 +532,7 @@
                 <label>Email Address</label>
                 <input type="email" id="authEmail" placeholder="name@example.com">
             </div>
-            <div class="form-group">
+            <div class="form-group" id="passwordGroup">
                 <label>Password</label>
                 <input type="password" id="authPassword" placeholder="••••••••">
             </div>
@@ -544,13 +544,13 @@
             <button class="btn btn-primary" style="width: 100%; padding: 10px;" id="authSubmitBtn" onclick="handleAuthSubmit()">Sign In</button>
             <div class="modal-footer">
                 <a id="authSwitchToggle" onclick="toggleAuthMode()">Don't have an account? Sign Up</a>
-                <a onclick="triggerForgotPassword()">Forgot Password?</a>
+                <a id="forgotPasswordLink" onclick="showForgotPasswordMode()">Forgot Password?</a>
             </div>
         </div>
     </div>
 
     <script>
-        let isSignUpMode = false;
+        let currentAuthMode = 'signin'; // 'signin', 'signup', 'forgot'
         let recognition = null;
         let isRecording = false;
         let scheduledEventsList = [];
@@ -733,36 +733,84 @@
             }
         }
 
-        function toggleAuthMode() {
-            isSignUpMode = !isSignUpMode;
+        function setAuthMode(mode) {
+            currentAuthMode = mode;
             const title = document.getElementById("authModalTitle");
             const submitBtn = document.getElementById("authSubmitBtn");
             const toggle = document.getElementById("authSwitchToggle");
+            const passwordGroup = document.getElementById("passwordGroup");
             const confirmGroup = document.getElementById("confirmPasswordGroup");
-
-            if (isSignUpMode) {
-                title.innerText = "Create Echo AI Account";
-                submitBtn.innerText = "Sign Up";
-                toggle.innerText = "Already have an account? Sign In";
-                confirmGroup.classList.remove("hidden");
-            } else {
-                title.innerText = "Sign In to Echo AI";
-                submitBtn.innerText = "Sign In";
-                toggle.innerText = "Don't have an account? Sign Up";
-                confirmGroup.classList.add("hidden");
-            }
-        }
-
-        async function handleAuthSubmit() {
-            const email = document.getElementById("authEmail").value;
-            const password = document.getElementById("authPassword").value;
+            const forgotLink = document.getElementById("forgotPasswordLink");
             const errorMsg = document.getElementById("authErrorMsg");
             errorMsg.innerText = "";
 
+            if (mode === 'signin') {
+                title.innerText = "Sign In to Echo AI";
+                submitBtn.innerText = "Sign In";
+                toggle.innerText = "Don't have an account? Sign Up";
+                passwordGroup.classList.remove("hidden");
+                confirmGroup.classList.add("hidden");
+                forgotLink.classList.remove("hidden");
+            } else if (mode === 'signup') {
+                title.innerText = "Create Echo AI Account";
+                submitBtn.innerText = "Sign Up";
+                toggle.innerText = "Already have an account? Sign In";
+                passwordGroup.classList.remove("hidden");
+                confirmGroup.classList.remove("hidden");
+                forgotLink.classList.remove("hidden");
+            } else if (mode === 'forgot') {
+                title.innerText = "Reset Your Password";
+                submitBtn.innerText = "Send Reset Link";
+                toggle.innerText = "Back to Sign In";
+                passwordGroup.classList.add("hidden");
+                confirmGroup.classList.add("hidden");
+                forgotLink.classList.add("hidden");
+            }
+        }
+
+        function toggleAuthMode() {
+            if (currentAuthMode === 'forgot' || currentAuthMode === 'signup') {
+                setAuthMode('signin');
+            } else {
+                setAuthMode('signup');
+            }
+        }
+
+        function showForgotPasswordMode() {
+            setAuthMode('forgot');
+        }
+
+        async function handleAuthSubmit() {
+            const email = document.getElementById("authEmail").value.trim();
+            const errorMsg = document.getElementById("authErrorMsg");
+            errorMsg.innerText = "";
+
+            if (!email) {
+                errorMsg.innerText = "Please enter your email address.";
+                return;
+            }
+
+            if (currentAuthMode === 'forgot') {
+                try {
+                    const res = await fetch("/api/forgot-password", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ email })
+                    });
+                    const data = await res.json();
+                    alert(data.message || "If the email exists, a reset link has been sent.");
+                    setAuthMode('signin');
+                } catch (err) {
+                    errorMsg.innerText = "Network error. Please try again.";
+                }
+                return;
+            }
+
+            const password = document.getElementById("authPassword").value;
             let endpoint = "/api/login";
             let payload = { email, password };
 
-            if (isSignUpMode) {
+            if (currentAuthMode === 'signup') {
                 endpoint = "/api/register";
                 const confirm_password = document.getElementById("authConfirmPassword").value;
                 payload.confirm_password = confirm_password;
@@ -857,7 +905,7 @@
             }
 
             if (data.ideas_and_notes && data.ideas_and_notes.length > 0) {
-                data.ideas_and_notes.length > 0 && data.ideas_and_notes.forEach(n => {
+                data.ideas_and_notes.forEach(n => {
                     noteList.innerHTML += `<li class="card-item"><strong>${n.category}</strong>: ${n.summary}</li>`;
                 });
             } else {
@@ -897,25 +945,6 @@
         function clearInput() {
             document.getElementById("rawInputText").value = "";
             document.getElementById("statusText").innerText = "Ready to process";
-        }
-
-        async function triggerForgotPassword() {
-            const email = document.getElementById("authEmail").value.trim();
-            if (!email) {
-                alert("Please type your account email address into the Email Address field first, then click Forgot Password.");
-                return;
-            }
-            try {
-                const res = await fetch("/api/forgot-password", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ email })
-                });
-                const data = await res.json();
-                alert(data.message || "If the email exists, a reset link has been sent.");
-            } catch (err) {
-                alert("Failed to send reset request due to a network error.");
-            }
         }
     </script>
 </body>
