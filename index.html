@@ -742,7 +742,7 @@
                     errorMsg.innerText = data.detail || "Authentication failed.";
                 }
             } catch (err) {
-                errorMsg.innerText = "Network error.";
+                errorMsg.persist = "Network error.";
             }
         }
 
@@ -766,7 +766,10 @@
                     const data = await res.json();
                     document.getElementById("rawInputText").value = "";
                     document.getElementById("statusText").innerText = "Processed successfully!";
-                    loadHistory(); // Reload history and aggregate today's active dashboard items
+                    
+                    // FIXED: Immediately render results on the dashboard tables upon successful processing!
+                    renderResults(data);
+                    loadHistory(); 
 
                     let summaryParts = [];
                     if (data.calendar_events?.length) summaryParts.push(`${data.calendar_events.length} event(s) to Calendar`);
@@ -848,13 +851,18 @@
                         tasks: [],
                         ideas_and_notes: []
                     };
-                    const todayStr = new Date().toDateString();
+                    const now = new Date();
 
                     history.forEach(item => {
                         list.innerHTML += `<div class="history-item" onclick='renderResults(${JSON.stringify(item.parsed_data)})'><p><strong>${new Date(item.created_at).toLocaleDateString()}</strong></p><p>${item.raw_text}</p></div>`;
                         
-                        // Accumulate today's items into the active dashboard tables
-                        if (new Date(item.created_at).toDateString() === todayStr) {
+                        // FIXED: Compare local date components to avoid UTC vs local timezone mismatches
+                        const itemDate = new Date(item.created_at);
+                        if (
+                            itemDate.getDate() === now.getDate() &&
+                            itemDate.getMonth() === now.getMonth() &&
+                            itemDate.getFullYear() === now.getFullYear()
+                        ) {
                             if (item.parsed_data.calendar_events) {
                                 todaysAggregatedData.calendar_events.push(...item.parsed_data.calendar_events);
                             }
@@ -867,8 +875,10 @@
                         }
                     });
 
-                    // Render today's accumulated items onto active dashboard cards
-                    renderResults(todaysAggregatedData);
+                    // Only overwrite with aggregated history if tables aren't already populated by an immediate submission
+                    if (todaysAggregatedData.calendar_events.length > 0 || todaysAggregatedData.tasks.length > 0 || todaysAggregatedData.ideas_and_notes.length > 0) {
+                        renderResults(todaysAggregatedData);
+                    }
                 }
             } catch (err) {}
         }
