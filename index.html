@@ -3,8 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reset Password - Echo AI</title>
+    <title>Echo AI — Unload Your Mind. Structured in Seconds.</title>
+        
+    <!-- SEO & Favicon -->
+    <meta name="description" content="Echo AI transforms unstructured voice notes and thoughts into structured calendar events, tasks, and notes in seconds.">
+    <link rel="icon" type="image/png" href="https://echoai.buzz/static/favicon.png">
+    <link rel="shortcut icon" type="image/png" href="https://echoai.buzz/static/favicon.png">
+    <link rel="apple-touch-icon" href="https://echoai.buzz/static/favicon.png">
+
     <style>
+        :root {
+            --bg-color: #0d1117;
+            --surface-color: #161b22;
+            --border-color: #30363d;
+            --text-primary: #c9d1d9;
+            --text-secondary: #8b949e;
+            --accent-blue: #58a6ff;
+            --accent-green: #238636;
+            --accent-danger: #f85149;
+            --hover-bg: #21262d;
+        }
+
         * {
             box-sizing: border-box;
             margin: 0;
@@ -13,50 +32,315 @@
         }
 
         body {
-            background-color: #0d1117;
-            color: #c9d1d9;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            background-color: var(--surface-color);
+            border-bottom: 1px solid var(--border-color);
+            width: 100%;
+        }
+
+        .logo-area h1 {
+            font-size: 1.25rem;
+            color: var(--accent-blue);
+            font-weight: 700;
+        }
+
+        .user-nav {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .user-email {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            display: none;
+        }
+
+        @media (min-width: 600px) {
+            .user-email { display: inline; }
+        }
+
+        .btn {
+            background-color: var(--surface-color);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            padding: 8px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+
+        .btn:hover { background-color: var(--hover-bg); }
+        .btn-primary { background-color: var(--accent-green); color: white; border: none; }
+        .btn-primary:hover { background-color: #2ea043; }
+        .btn-danger { background-color: transparent; color: var(--accent-danger); border-color: var(--accent-danger); }
+        .btn-danger:hover { background-color: rgba(248, 81, 73, 0.1); }
+
+        .btn-mic {
+            background-color: var(--surface-color);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-mic.recording {
+            background-color: var(--accent-danger);
+            color: white;
+            border-color: var(--accent-danger);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.6; }
+            100% { opacity: 1; }
+        }
+
+        .notification-banner {
+            background-color: #1f2937;
+            border-bottom: 1px solid var(--border-color);
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+            color: var(--text-primary);
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .seo-intro {
+            padding: 15px 20px;
+            background: var(--surface-color);
+            border-bottom: 1px solid var(--border-color);
+            text-align: center;
+        }
+
+        .seo-intro h2 { font-size: 1rem; color: var(--accent-blue); margin-bottom: 4px; }
+        .seo-intro p { font-size: 0.8rem; color: var(--text-secondary); }
+
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        @media (min-width: 768px) {
+            .app-container { flex-direction: row; }
+        }
+
+        sidebar {
+            width: 100%;
+            background-color: var(--surface-color);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            max-height: 250px;
+            overflow-y: auto;
+        }
+
+        @media (min-width: 768px) {
+            sidebar {
+                width: 300px;
+                border-bottom: none;
+                border-right: 1px solid var(--border-color);
+                max-height: none;
+                height: calc(100vh - 110px);
+            }
+        }
+
+        .sidebar-header {
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .sidebar-header h3 { font-size: 0.95rem; color: var(--text-primary); }
+
+        .history-list {
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .history-item {
+            padding: 10px;
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+
+        .history-item:hover { border-color: var(--accent-blue); }
+        .history-item p {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .workspace {
+            flex: 1;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            max-width: 100%;
+            overflow-x: hidden;
+        }
+
+        @media (min-width: 768px) {
+            .workspace { padding: 30px; }
+        }
+
+        .input-card {
+            background-color: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        @media (min-width: 768px) {
+            .input-card { padding: 20px; }
+        }
+
+        .input-card textarea {
+            width: 100%;
+            min-height: 120px;
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            resize: vertical;
+        }
+
+        .input-card textarea:focus { outline: none; border-color: var(--accent-blue); }
+
+        .input-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+            width: 100%;
+        }
+
+        @media (min-width: 768px) {
+            .results-grid { grid-template-columns: repeat(3, 1fr); }
+        }
+
+        .result-box {
+            background-color: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            min-height: 180px;
+        }
+
+        .result-box h4 {
+            font-size: 0.9rem;
+            color: var(--accent-blue);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+        }
+
+        .card-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .card-item {
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            padding: 8px 10px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(13, 17, 23, 0.85);
+            backdrop-filter: blur(4px);
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 100vh;
-            padding: 1rem;
+            z-index: 1000;
+            padding: 15px;
         }
 
-        .card {
-            background-color: #161b22;
-            border: 1px solid #30363d;
+        .modal-card {
+            background-color: var(--surface-color);
+            border: 1px solid var(--border-color);
             border-radius: 12px;
-            padding: 2rem;
             width: 100%;
             max-width: 400px;
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
             box-shadow: 0 8px 24px rgba(0,0,0,0.5);
         }
 
-        h2 {
-            font-size: 1.3rem;
-            margin-bottom: 0.5rem;
-            text-align: center;
-            color: #58a6ff;
-        }
-
-        p.subtitle {
-            font-size: 0.85rem;
-            color: #8b949e;
-            text-align: center;
-            margin-bottom: 1.5rem;
-        }
+        .modal-card h2 { font-size: 1.3rem; color: var(--accent-blue); margin-bottom: 5px; }
 
         .form-group {
-            margin-bottom: 1.25rem;
             display: flex;
             flex-direction: column;
             gap: 5px;
         }
 
-        label {
-            font-size: 0.8rem;
-            color: #8b949e;
-        }
+        .form-group label { font-size: 0.8rem; color: var(--text-secondary); }
 
         .input-container {
             position: relative;
@@ -64,20 +348,17 @@
             align-items: center;
         }
 
-        input {
-            background-color: #0d1117;
-            border: 1px solid #30363d;
+        .form-group input {
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
             padding: 10px 38px 10px 10px;
             border-radius: 6px;
-            color: #c9d1d9;
+            color: var(--text-primary);
             font-size: 0.9rem;
             width: 100%;
-            outline: none;
         }
 
-        input:focus {
-            border-color: #58a6ff;
-        }
+        .form-group input:focus { outline: none; border-color: var(--accent-blue); }
 
         .toggle-password {
             position: absolute;
@@ -85,17 +366,14 @@
             background: none;
             border: none;
             cursor: pointer;
-            color: #8b949e;
+            color: var(--text-secondary);
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 4px;
         }
 
-        .toggle-password:hover {
-            color: #58a6ff;
-        }
-
+        .toggle-password:hover { color: var(--accent-blue); }
         .toggle-password svg {
             width: 18px;
             height: 18px;
@@ -106,89 +384,139 @@
             stroke-linejoin: round;
         }
 
-        .hint {
-            font-size: 0.75rem;
-            color: #8b949e;
-            margin-top: 2px;
-        }
+        .hint { font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px; }
 
-        button.btn-submit {
-            width: 100%;
-            padding: 10px;
-            border-radius: 6px;
-            border: none;
-            background-color: #238636;
-            color: white;
-            font-weight: bold;
-            font-size: 0.9rem;
-            cursor: pointer;
-            margin-top: 5px;
-            transition: background 0.2s;
-        }
-
-        button.btn-submit:hover {
-            background-color: #2ea043;
-        }
-
-        #status-message {
-            margin-top: 1rem;
-            text-align: center;
+        .modal-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
             font-size: 0.85rem;
-            padding: 8px;
-            border-radius: 6px;
-            display: none;
         }
 
-        .status-success {
-            display: block !important;
-            background-color: rgba(35, 134, 54, 0.15);
-            color: #4ade80;
-            border: 1px solid rgba(35, 134, 54, 0.3);
-        }
-
-        .status-error {
-            display: block !important;
-            background-color: rgba(248, 81, 73, 0.15);
-            color: #f85149;
-            border: 1px solid rgba(248, 81, 73, 0.3);
-        }
+        .modal-footer a { color: var(--accent-blue); text-decoration: none; cursor: pointer; }
+        .modal-footer a:hover { text-decoration: underline; }
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
 
-    <div class="card">
-        <h2>Set New Password</h2>
-        <p class="subtitle">Enter your new secure password below.</p>
+    <header>
+        <div class="logo-area"><h1>Echo AI</h1></div>
+        <div class="user-nav">
+            <button class="btn" onclick="shareApp()">📲 Share App</button>
+            <span class="user-email" id="userEmailDisplay"></span>
+            <button class="btn btn-danger hidden" id="logoutBtn" onclick="logoutUser()">Sign Out</button>
+        </div>
+    </header>
 
-        <form id="reset-form">
+    <div class="seo-intro">
+        <h2>Unload Your Mind. Structured in Seconds.</h2>
+        <p>Echo AI transforms unstructured voice notes, thoughts, and ideas into organized calendar events and tasks automatically.</p>
+    </div>
+
+    <div class="notification-banner" id="notificationBanner" style="display: none;">
+        <span>🔔 Enable notifications to receive pop-up alerts with sound when scheduled items are due.</span>
+        <button class="btn btn-primary" onclick="enableNotifications()">Enable Pop-up Alerts</button>
+    </div>
+
+    <div class="app-container">
+        <sidebar>
+            <div class="sidebar-header">
+                <h3>Past Dumps</h3>
+                <button class="btn" onclick="clearInput()">+ New Dump</button>
+            </div>
+            <div class="history-list" id="historyList">
+                <div class="history-item"><p style="color: var(--text-secondary);">Loading history...</p></div>
+            </div>
+        </sidebar>
+
+        <div class="workspace">
+            <div class="input-card">
+                <textarea id="rawInputText" placeholder="Click 'Start Talking' or type your thought dump..."></textarea>
+                <div class="input-actions">
+                    <span id="statusText" style="font-size: 0.8rem; color: var(--text-secondary);">Ready to process</span>
+                    <div class="action-buttons">
+                        <button class="btn btn-mic" id="micBtn" onclick="toggleRecording()">
+                            <span>🎙️</span> <span id="micText">Start Talking</span>
+                        </button>
+                        <button class="btn btn-primary" onclick="processDump()">Process with AI</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="results-grid">
+                <div class="result-box">
+                    <h4>📅 Calendar Events</h4>
+                    <ul class="card-list" id="calendarList">
+                        <li class="card-item" style="color: var(--text-secondary);">No events extracted yet.</li>
+                    </ul>
+                </div>
+                <div class="result-box">
+                    <h4>📝 Action Tasks</h4>
+                    <ul class="card-list" id="tasksList">
+                        <li class="card-item" style="color: var(--text-secondary);">No tasks extracted yet.</li>
+                    </ul>
+                </div>
+                <div class="result-box">
+                    <h4>💡 Ideas & Notes</h4>
+                    <ul class="card-list" id="notesList">
+                        <li class="card-item" style="color: var(--text-secondary);">No ideas saved yet.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="authModal">
+        <div class="modal-card">
+            <h2 id="authModalTitle">Sign In to Echo AI</h2>
             <div class="form-group">
-                <label for="new-password">New Password</label>
+                <label>Email Address</label>
+                <input type="email" id="authEmail" placeholder="name@example.com">
+            </div>
+            <div class="form-group" id="passwordGroup">
+                <label>Password</label>
                 <div class="input-container">
-                    <input type="password" id="new-password" required placeholder="••••••••">
-                    <button type="button" class="toggle-password" onclick="toggleVisibility('new-password', this)">
+                    <input type="password" id="authPassword" placeholder="••••••••">
+                    <button type="button" class="toggle-password" onclick="toggleVisibility('authPassword', this)">
                         <svg class="eye-icon" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                     </button>
                 </div>
-                <div class="hint">Must be at least 8 characters long.</div>
+                <div class="hint" id="passwordHint" style="display: none;">Must be at least 8 characters long.</div>
             </div>
-
-            <div class="form-group">
-                <label for="confirm-password">Confirm Password</label>
+            <div class="form-group hidden" id="confirmPasswordGroup">
+                <label>Confirm Password</label>
                 <div class="input-container">
-                    <input type="password" id="confirm-password" required placeholder="••••••••">
-                    <button type="button" class="toggle-password" onclick="toggleVisibility('confirm-password', this)">
+                    <input type="password" id="authConfirmPassword" placeholder="••••••••">
+                    <button type="button" class="toggle-password" onclick="toggleVisibility('authConfirmPassword', this)">
                         <svg class="eye-icon" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                     </button>
                 </div>
             </div>
-
-            <button type="submit" class="btn-submit">Update Password</button>
-        </form>
-
-        <div id="status-message"></div>
+            <p id="authErrorMsg" style="color: var(--accent-danger); font-size: 0.8rem;"></p>
+            <button class="btn btn-primary" style="width: 100%; padding: 10px;" id="authSubmitBtn" onclick="handleAuthSubmit()">Sign In</button>
+            <div class="modal-footer">
+                <a id="authSwitchToggle" onclick="toggleAuthMode()">Don't have an account? Sign Up</a>
+                <a id="forgotPasswordLink" onclick="showForgotPasswordMode()">Forgot Password?</a>
+            </div>
+        </div>
     </div>
 
     <script>
+        let currentAuthMode = 'signin';
+        let recognition = null;
+        let isRecording = false;
+        let scheduledEventsList = [];
+
+        window.addEventListener("DOMContentLoaded", () => {
+            checkAuth();
+            loadHistory();
+            initSpeechRecognition();
+            checkNotificationPermission();
+            startAlarmChecker();
+        });
+
         function toggleVisibility(inputId, btn) {
             const input = document.getElementById(inputId);
             const isPassword = input.type === "password";
@@ -201,55 +529,285 @@
             }
         }
 
-        document.getElementById('reset-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const msg = document.getElementById('status-message');
-            const newPassword = document.getElementById('new-password').value;
-            const confirmPassword = document.getElementById('confirm-password').value;
+        async function shareApp() {
+            if (navigator.share) {
+                try {
+                    await navigator.share({ title: 'Echo AI', text: 'Unload your mind with Echo AI.', url: window.location.href });
+                } catch (err) {}
+            } else {
+                navigator.clipboard.writeText(window.location.href);
+                alert("App link copied!");
+            }
+        }
 
-            const urlParams = new URLSearchParams(window.location.search);
-            const token = urlParams.get('token');
+        function checkNotificationPermission() {
+            const banner = document.getElementById("notificationBanner");
+            if ("Notification" in window && Notification.permission !== "granted") {
+                banner.style.display = "flex";
+            }
+        }
 
-            if (!token) {
-                msg.className = 'status-error';
-                msg.textContent = 'Invalid or missing reset token. Please request a new link.';
+        async function enableNotifications() {
+            if ("Notification" in window) {
+                const permission = await Notification.requestPermission();
+                if (permission === "granted") {
+                    document.getElementById("notificationBanner").style.display = "none";
+                    new Notification("Echo AI Alerts Active", { body: "Pop-up notifications enabled!" });
+                }
+            }
+        }
+
+        function startAlarmChecker() {
+            setInterval(() => {
+                const now = new Date();
+                scheduledEventsList.forEach(ev => {
+                    if (!ev.notified && ev.parsedTime && ev.parsedTime.getHours() === now.getHours() && ev.parsedTime.getMinutes() === now.getMinutes()) {
+                        ev.notified = true;
+                        if ("Notification" in window && Notification.permission === "granted") {
+                            new Notification("⏰ Scheduled Event Due!", { body: `Event: ${ev.title}` });
+                        }
+                    }
+                });
+            }, 30000);
+        }
+
+        function initSpeechRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (SpeechRecognition) {
+                recognition = new SpeechRecognition();
+                recognition.continuous = true;
+                recognition.interimResults = true;
+                recognition.lang = 'en-US';
+                recognition.onresult = (event) => {
+                    let transcript = '';
+                    for (let i = event.resultIndex; i < event.results.length; i++) {
+                        transcript += event.results[i][0].transcript;
+                    }
+                    document.getElementById("rawInputText").value = transcript;
+                };
+                recognition.onerror = () => stopRecordingUI();
+                recognition.onend = () => stopRecordingUI();
+            }
+        }
+
+        function toggleRecording() {
+            if (!recognition) {
+                alert("Speech recognition not supported in this browser.");
+                return;
+            }
+            if (isRecording) {
+                recognition.stop();
+                stopRecordingUI();
+            } else {
+                recognition.start();
+                isRecording = true;
+                document.getElementById("micBtn").classList.add("recording");
+                document.getElementById("micText").innerText = "Listening...";
+                document.getElementById("statusText").innerText = "Listening...";
+            }
+        }
+
+        function stopRecordingUI() {
+            isRecording = false;
+            const micBtn = document.getElementById("micBtn");
+            if (micBtn) {
+                micBtn.classList.remove("recording");
+                document.getElementById("micText").innerText = "Start Talking";
+                document.getElementById("statusText").innerText = "Ready to process";
+            }
+        }
+
+        async function checkAuth() {
+            try {
+                const res = await fetch("/api/me");
+                if (res.ok) {
+                    const data = await res.json();
+                    document.getElementById("userEmailDisplay").innerText = data.email;
+                    document.getElementById("logoutBtn").classList.remove("hidden");
+                    document.getElementById("authModal").classList.add("hidden");
+                } else {
+                    document.getElementById("authModal").classList.remove("hidden");
+                }
+            } catch (err) {}
+        }
+
+        function setAuthMode(mode) {
+            currentAuthMode = mode;
+            const title = document.getElementById("authModalTitle");
+            const submitBtn = document.getElementById("authSubmitBtn");
+            const toggle = document.getElementById("authSwitchToggle");
+            const passwordGroup = document.getElementById("passwordGroup");
+            const confirmGroup = document.getElementById("confirmPasswordGroup");
+            const forgotLink = document.getElementById("forgotPasswordLink");
+            const passwordHint = document.getElementById("passwordHint");
+            document.getElementById("authErrorMsg").innerText = "";
+
+            if (mode === 'signin') {
+                title.innerText = "Sign In to Echo AI";
+                submitBtn.innerText = "Sign In";
+                toggle.innerText = "Don't have an account? Sign Up";
+                passwordGroup.classList.remove("hidden");
+                confirmGroup.classList.add("hidden");
+                forgotLink.classList.remove("hidden");
+                passwordHint.style.display = "none";
+            } else if (mode === 'signup') {
+                title.innerText = "Create Echo AI Account";
+                submitBtn.innerText = "Sign Up";
+                toggle.innerText = "Already have an account? Sign In";
+                passwordGroup.classList.remove("hidden");
+                confirmGroup.classList.remove("hidden");
+                forgotLink.classList.add("hidden");
+                passwordHint.style.display = "block";
+            } else if (mode === 'forgot') {
+                title.innerText = "Reset Your Password";
+                submitBtn.innerText = "Send Reset Link";
+                toggle.innerText = "Back to Sign In";
+                passwordGroup.classList.add("hidden");
+                confirmGroup.classList.add("hidden");
+                forgotLink.classList.add("hidden");
+                passwordHint.style.display = "none";
+            }
+        }
+
+        function toggleAuthMode() {
+            setAuthMode(currentAuthMode === 'signin' ? 'signup' : 'signin');
+        }
+
+        function showForgotPasswordMode() {
+            setAuthMode('forgot');
+        }
+
+        async function handleAuthSubmit() {
+            const email = document.getElementById("authEmail").value.trim();
+            const errorMsg = document.getElementById("authErrorMsg");
+            errorMsg.innerText = "";
+
+            if (!email) {
+                errorMsg.innerText = "Please enter your email address.";
                 return;
             }
 
-            if (newPassword.length < 8) {
-                msg.className = 'status-error';
-                msg.textContent = 'Password must be at least 8 characters long.';
+            if (currentAuthMode === 'forgot') {
+                try {
+                    const res = await fetch("/api/forgot-password", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ email })
+                    });
+                    const data = await res.json();
+                    alert(data.message || "If the email exists, a reset link has been sent.");
+                    setAuthMode('signin');
+                } catch (err) {
+                    errorMsg.innerText = "Network error.";
+                }
                 return;
             }
 
-            if (newPassword !== confirmPassword) {
-                msg.className = 'status-error';
-                msg.textContent = 'Passwords do not match.';
+            const password = document.getElementById("authPassword").value;
+            if (currentAuthMode === 'signup' && password.length < 8) {
+                errorMsg.innerText = "Password must be at least 8 characters long.";
                 return;
+            }
+
+            let endpoint = "/api/login";
+            let payload = { email, password };
+
+            if (currentAuthMode === 'signup') {
+                endpoint = "/api/register";
+                const confirm_password = document.getElementById("authConfirmPassword").value;
+                if (password !== confirm_password) {
+                    errorMsg.innerText = "Passwords do not match.";
+                    return;
+                }
+                payload.confirm_password = confirm_password;
             }
 
             try {
-                const res = await fetch('/api/reset-password', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ token: token, new_password: newPassword })
+                const res = await fetch(endpoint, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
                 });
-
                 const data = await res.json();
-
                 if (res.ok) {
-                    msg.className = 'status-success';
-                    msg.textContent = 'Password successfully reset! Redirecting to login...';
-                    setTimeout(() => window.location.href = '/', 2500);
+                    window.location.reload();
                 } else {
-                    msg.className = 'status-error';
-                    msg.textContent = data.detail || 'Reset failed. Token may be expired.';
+                    errorMsg.innerText = data.detail || "Authentication failed.";
                 }
             } catch (err) {
-                msg.className = 'status-error';
-                msg.textContent = 'Server connection error. Please try again later.';
+                errorMsg.innerText = "Network error.";
             }
-        });
+        }
+
+        async function logoutUser() {
+            await fetch("/api/logout", { method: "POST" });
+            window.location.reload();
+        }
+
+        async function processDump() {
+            let raw_text = document.getElementById("rawInputText").value;
+            if (!raw_text.trim()) return;
+
+            document.getElementById("statusText").innerText = "Processing with AI...";
+            try {
+                const res = await fetch("/parse-voice-dump", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ raw_text })
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    renderResults(data);
+                    document.getElementById("rawInputText").value = "";
+                    document.getElementById("statusText").innerText = "Processed successfully!";
+                    loadHistory();
+                } else {
+                    document.getElementById("statusText").innerText = "Error processing dump.";
+                }
+            } catch (err) {
+                document.getElementById("statusText").innerText = "Network error.";
+            }
+        }
+
+        function renderResults(data) {
+            const calList = document.getElementById("calendarList");
+            const taskList = document.getElementById("tasksList");
+            const noteList = document.getElementById("notesList");
+
+            calList.innerHTML = data.calendar_events?.length ? '' : '<li class="card-item" style="color:var(--text-secondary);">No events found.</li>';
+            data.calendar_events?.forEach(ev => {
+                calList.innerHTML += `<li class="card-item"><strong>${ev.title}</strong><br><span style="color:var(--text-secondary);font-size:0.75rem;">${ev.day_or_date} @ ${ev.time}</span></li>`;
+            });
+
+            taskList.innerHTML = data.tasks?.length ? '' : '<li class="card-item" style="color:var(--text-secondary);">No tasks found.</li>';
+            data.tasks?.forEach(t => {
+                taskList.innerHTML += `<li class="card-item"><strong>${t.task}</strong><br><span style="color:var(--text-secondary);font-size:0.75rem;">Priority: ${t.priority}</span></li>`;
+            });
+
+            noteList.innerHTML = data.ideas_and_notes?.length ? '' : '<li class="card-item" style="color:var(--text-secondary);">No notes found.</li>';
+            data.ideas_and_notes?.forEach(n => {
+                noteList.innerHTML += `<li class="card-item"><strong>${n.category}</strong>: ${n.summary}</li>`;
+            });
+        }
+
+        async function loadHistory() {
+            try {
+                const res = await fetch("/history");
+                if (res.ok) {
+                    const history = await res.json();
+                    const list = document.getElementById("historyList");
+                    list.innerHTML = history.length ? '' : '<div class="history-item"><p>No past dumps yet.</p></div>';
+                    history.forEach(item => {
+                        list.innerHTML += `<div class="history-item" onclick='renderResults(${JSON.stringify(item.parsed_data)})'><p><strong>${new Date(item.created_at).toLocaleDateString()}</strong></p><p>${item.raw_text}</p></div>`;
+                    });
+                }
+            } catch (err) {}
+        }
+
+        function clearInput() {
+            document.getElementById("rawInputText").value = "";
+            document.getElementById("statusText").innerText = "Ready to process";
+        }
     </script>
 </body>
 </html>
