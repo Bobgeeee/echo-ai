@@ -124,13 +124,51 @@ Return ONLY a valid JSON object matching this schema:
 }
 """
 
+def normalize_time_string(time_str: str) -> str:
+    if not time_str:
+        return ""
+    clean = time_str.replace('.', '').strip().upper()
+    clean = re.sub(r'(\d+:\d+|\d+)(AM|PM)', r'\1 \2', clean)
+    if ':' not in clean:
+        clean = re.sub(r'(\d+)\s*(AM|PM)', r'\1:00 \2', clean)
+    return clean
+
+def extract_time_fallback(raw_text: str) -> Optional[str]:
+    pattern = r'\b(1[0-2]|0?[1-9])(?::([0-5][0-9]))?\s*(a\.?m\.?|p\.?m\.?|am|pm)\b'
+    match = re.search(pattern, raw_text, re.IGNORECASE)
+    if match:
+        return normalize_time_string(match.group(0))
+    return None
+
 def parse_with_gemini(raw_text: str) -> dict:
     try:
         model = genai.GenerativeModel("gemini-1.5-flash")
         response = model.generate_content(f"{SYSTEM_PROMPT}\n\nUser Input: {raw_text}")
         cleaned_json = response.text.strip().replace("```json", "").replace("```", "")
-        return json.loads(cleaned_json)
+        parsed_data = json.loads(cleaned_json)
+        
+        extracted_time = extract_time_fallback(raw_text)
+        if extracted_time:
+            if not parsed_data.get("calendar_events"):
+                parsed_data["calendar_events"] = []
+            parsed_data["calendar_events"].append({
+                "title": raw_text.strip(),
+                "day_or_date": "Today",
+                "time": extracted_time
+            })
+            parsed_data["tasks"] = []
+            parsed_data["ideas_and_notes"] = []
+
+        return parsed_data
     except Exception:
+        extracted_time = extract_time_fallback(raw_text)
+        if extracted_time:
+            return {
+                "cleaned_text": raw_text,
+                "calendar_events": [{"title": raw_text.strip(), "day_or_date": "Today", "time": extracted_time}],
+                "tasks": [],
+                "ideas_and_notes": []
+            }
         return {
             "cleaned_text": raw_text,
             "calendar_events": [],

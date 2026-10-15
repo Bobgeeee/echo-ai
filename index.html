@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Echo AI — Unload Your Mind. Structured in Seconds.</title>
         
-    <!-- SEO & Favicon -->
     <meta name="description" content="Echo AI transforms unstructured voice notes and thoughts into structured calendar events, tasks, and notes in seconds.">
     <link rel="icon" type="image/png" href="https://echoai.buzz/static/favicon.png">
     <link rel="shortcut icon" type="image/png" href="https://echoai.buzz/static/favicon.png">
@@ -416,8 +415,8 @@
     </div>
 
     <div class="notification-banner" id="notificationBanner" style="display: none;">
-        <span>🔔 Enable notifications to receive pop-up alerts with sound when scheduled items are due.</span>
-        <button class="btn btn-primary" onclick="enableNotifications()">Enable Pop-up Alerts</button>
+        <span>🔔 Enable push notifications for Android, iPhone & Laptop to receive calendar alarms and routing alerts.</span>
+        <button class="btn btn-primary" onclick="enableNotifications()">Enable Notifications</button>
     </div>
 
     <div class="app-container">
@@ -542,8 +541,12 @@
 
         function checkNotificationPermission() {
             const banner = document.getElementById("notificationBanner");
-            if ("Notification" in window && Notification.permission !== "granted") {
-                banner.style.display = "flex";
+            if ("Notification" in window) {
+                if (Notification.permission !== "granted") {
+                    banner.style.display = "flex";
+                } else {
+                    banner.style.display = "none";
+                }
             }
         }
 
@@ -552,8 +555,12 @@
                 const permission = await Notification.requestPermission();
                 if (permission === "granted") {
                     document.getElementById("notificationBanner").style.display = "none";
-                    new Notification("Echo AI Alerts Active", { body: "Pop-up notifications enabled!" });
+                    new Notification("Echo AI Notifications Active", { body: "Cross-device push alerts enabled successfully on Android, iPhone & Laptop!" });
+                } else {
+                    alert("Notification permission was denied. Please enable notifications in your browser settings.");
                 }
+            } else {
+                alert("This device or browser does not support web push notifications.");
             }
         }
 
@@ -564,7 +571,7 @@
                     if (!ev.notified && ev.parsedTime && ev.parsedTime.getHours() === now.getHours() && ev.parsedTime.getMinutes() === now.getMinutes()) {
                         ev.notified = true;
                         if ("Notification" in window && Notification.permission === "granted") {
-                            new Notification("⏰ Scheduled Event Due!", { body: `Event: ${ev.title}` });
+                            new Notification("⏰ Scheduled Event Due!", { body: `Event: ${ev.title} is happening now!` });
                         }
                     }
                 });
@@ -761,6 +768,17 @@
                     document.getElementById("rawInputText").value = "";
                     document.getElementById("statusText").innerText = "Processed successfully!";
                     loadHistory();
+
+                    // Push notification summarizing routing positions
+                    let summaryParts = [];
+                    if (data.calendar_events?.length) summaryParts.push(`${data.calendar_events.length} event(s) to Calendar`);
+                    if (data.tasks?.length) summaryParts.push(`${data.tasks.length} task(s) to Action Tasks`);
+                    if (data.ideas_and_notes?.length) summaryParts.push(`${data.ideas_and_notes.length} note(s) to Ideas`);
+                    
+                    const routingSummary = summaryParts.join(", ") || "Processed successfully";
+                    if ("Notification" in window && Notification.permission === "granted") {
+                        new Notification("🚀 Thought Routed by AI", { body: routingSummary });
+                    }
                 } else {
                     document.getElementById("statusText").innerText = "Error processing dump.";
                 }
@@ -774,9 +792,22 @@
             const taskList = document.getElementById("tasksList");
             const noteList = document.getElementById("notesList");
 
+            scheduledEventsList = [];
+
             calList.innerHTML = data.calendar_events?.length ? '' : '<li class="card-item" style="color:var(--text-secondary);">No events found.</li>';
             data.calendar_events?.forEach(ev => {
                 calList.innerHTML += `<li class="card-item"><strong>${ev.title}</strong><br><span style="color:var(--text-secondary);font-size:0.75rem;">${ev.day_or_date} @ ${ev.time}</span></li>`;
+                
+                // Parse time for alarms
+                if (ev.time) {
+                    const [timePart, modifier] = ev.time.split(' ');
+                    let [hours, minutes] = timePart.split(':').map(Number);
+                    if (modifier === 'PM' && hours < 12) hours += 12;
+                    if (modifier === 'AM' && hours === 12) hours = 0;
+                    const eventDate = new Date();
+                    eventDate.setHours(hours || 0, minutes || 0, 0, 0);
+                    scheduledEventsList.push({ title: ev.title, parsedTime: eventDate, notified: false });
+                }
             });
 
             taskList.innerHTML = data.tasks?.length ? '' : '<li class="card-item" style="color:var(--text-secondary);">No tasks found.</li>';
