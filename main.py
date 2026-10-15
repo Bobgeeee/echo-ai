@@ -114,8 +114,13 @@ def send_email_notification(recipient_email: str, subject: str, body_content: st
         print(f"Resend error: {e}")
 
 SYSTEM_PROMPT = """
-You are an advanced AI assistant that handles voice transcript restoration and smart task routing.
-Return ONLY a valid JSON object matching this schema:
+You are an advanced AI assistant for Echo AI that handles voice transcript restoration and multi-intent smart task routing.
+Analyze the user's input and intelligently split mixed thoughts into the correct categories:
+1. "calendar_events": For scheduled meetings, calls, appointments, or time-specific commitments (include title, day_or_date, and time).
+2. "tasks": For actionable to-do items, errands, or operational items (include task description, priority, due_date_mention).
+3. "ideas_and_notes": For passive concepts, brainstorms, feature ideas, or general notes without execution deadlines.
+
+Return ONLY a valid JSON object matching this exact schema:
 {
   "cleaned_text": "Polished text with perfect punctuation.",
   "calendar_events": [{"title": "Event title", "day_or_date": "Today", "time": "12:30 PM"}],
@@ -147,32 +152,23 @@ def parse_with_gemini(raw_text: str) -> dict:
         cleaned_json = response.text.strip().replace("```json", "").replace("```", "")
         parsed_data = json.loads(cleaned_json)
         
-        extracted_time = extract_time_fallback(raw_text)
-        if extracted_time:
-            if not parsed_data.get("calendar_events"):
-                parsed_data["calendar_events"] = []
-            parsed_data["calendar_events"].append({
-                "title": raw_text.strip(),
-                "day_or_date": "Today",
-                "time": extracted_time
-            })
+        if "calendar_events" not in parsed_data:
+            parsed_data["calendar_events"] = []
+        if "tasks" not in parsed_data:
             parsed_data["tasks"] = []
+        if "ideas_and_notes" not in parsed_data:
             parsed_data["ideas_and_notes"] = []
+        if "cleaned_text" not in parsed_data:
+            parsed_data["cleaned_text"] = raw_text
 
         return parsed_data
-    except Exception:
+    except Exception as e:
+        print(f"Gemini parsing error: {e}")
         extracted_time = extract_time_fallback(raw_text)
-        if extracted_time:
-            return {
-                "cleaned_text": raw_text,
-                "calendar_events": [{"title": raw_text.strip(), "day_or_date": "Today", "time": extracted_time}],
-                "tasks": [],
-                "ideas_and_notes": []
-            }
         return {
             "cleaned_text": raw_text,
-            "calendar_events": [],
-            "tasks": [{"task": raw_text, "priority": "Medium", "due_date_mention": "Today"}],
+            "calendar_events": [{"title": raw_text.strip(), "day_or_date": "Today", "time": extracted_time}] if extracted_time else [],
+            "tasks": [{"task": raw_text, "priority": "Medium", "due_date_mention": "Today"}] if not extracted_time else [],
             "ideas_and_notes": []
         }
 
