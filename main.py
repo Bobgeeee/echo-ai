@@ -282,6 +282,14 @@ def get_history(request: Request, db: Session = Depends(get_db)):
     dumps = db.query(ThoughtDump).filter(ThoughtDump.user_id == user.id).order_by(ThoughtDump.created_at.desc()).all()
     return [{"id": d.id, "raw_text": d.raw_text, "parsed_data": d.parsed_data, "created_at": d.created_at.replace(tzinfo=timezone.utc).isoformat()} for d in dumps]
 
+@app.get("/api/clear-my-dumps")
+def clear_my_dumps(request: Request, db: Session = Depends(get_db)):
+    user = get_current_user(request, db)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    db.query(ThoughtDump).filter(ThoughtDump.user_id == user.id).delete()
+    db.commit()
+    return {"message": "Your past dumps have been cleared!"}
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
