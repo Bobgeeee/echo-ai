@@ -112,48 +112,49 @@ def send_email_notification(recipient_email: str, subject: str, body_content: st
         })
     except Exception as e:
         print(f"Resend error: {e}")
+
 SYSTEM_PROMPT = """
-You are the intelligence engine for Echo AI. You MUST split the user's input into separate arrays when multiple intents are present. Do not dump everything into one category.
+You are the intelligence engine for Echo AI. Analyze the user's input and strictly split mixed thoughts into their correct respective categories:
+1. "calendar_events": For scheduled meetings, calls, appointments, or time-specific commitments. Must include keys: "title", "day_or_date", "time".
+2. "tasks": For actionable to-do items, errands, or operational items without a strict meeting time. Must include keys: "task", "priority", "due_date_mention".
+3. "ideas_and_notes": For passive concepts, brainstorms, feature ideas, or general notes without execution deadlines. Must include keys: "category", "summary".
 
-1. "calendar_events": ONLY for items with specific dates/times (meetings, calls, scheduled events). Include title, day_or_date, time.
-2. "tasks": ONLY for actionable to-dos or errands without a strict meeting time. Include task, priority, due_date_mention.
-3. "ideas_and_notes": ONLY for feature ideas, brainstorms, or conceptual thoughts. Include category, summary.
-
-Return ONLY a valid JSON object matching this schema:
+Return ONLY a valid JSON object matching this exact schema:
 {
   "cleaned_text": "Polished text with perfect punctuation.",
-  "calendar_events": [],
-  "tasks": [],
-  "ideas_and_notes": []
+  "calendar_events": [{"title": "Event title", "day_or_date": "Today", "time": "12:30 PM"}],
+  "tasks": [{"task": "Task description", "priority": "High", "due_date_mention": "Today"}],
+  "ideas_and_notes": [{"category": "General Thought", "summary": "Brief summary"}]
 }
 """
 
 def parse_with_gemini(raw_text: str) -> dict:
     try:
         model = genai.GenerativeModel("gemini-1.5-flash")
-        response = model.generate_content(
-            f"{SYSTEM_PROMPT}\n\nUser Input: {raw_text}",
-            generation_config={"response_mime_type": "application/json"}
-        )
-        cleaned_json = response.text.strip().replace("```json", "").replace("```", "")
-        parsed_data = json.loads(cleaned_json)
+        response = model.generate_content(f"{SYSTEM_PROMPT}\n\nUser Input: {raw_text}")
         
-        if "calendar_events" not in parsed_data:
-            parsed_data["calendar_events"] = []
-        if "tasks" not in parsed_data:
-            parsed_data["tasks"] = []
-        if "ideas_and_notes" not in parsed_data:
-            parsed_data["ideas_and_notes"] = []
-        if "cleaned_text" not in parsed_data:
-            parsed_data["cleaned_text"] = raw_text
-
-        return parsed_data
+        text_res = response.text.strip()
+        if text_res.startswith("```json"):
+            text_res = text_res[7:]
+        if text_res.startswith("```"):
+            text_res = text_res[3:]
+        if text_res.endswith("```"):
+            text_res = text_res[:-3]
+            
+        parsed_data = json.loads(text_res.strip())
+        
+        return {
+            "cleaned_text": parsed_data.get("cleaned_text", raw_text),
+            "calendar_events": parsed_data.get("calendar_events", []),
+            "tasks": parsed_data.get("tasks", []),
+            "ideas_and_notes": parsed_data.get("ideas_and_notes", [])
+        }
     except Exception as e:
         print(f"Gemini parsing error: {e}")
         return {
             "cleaned_text": raw_text,
             "calendar_events": [],
-            "tasks": [{"task": raw_text, "priority": "Medium", "due_date_mention": "Today"}],
+            "tasks": [],
             "ideas_and_notes": []
         }
 
