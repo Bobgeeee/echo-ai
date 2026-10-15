@@ -112,20 +112,19 @@ def send_email_notification(recipient_email: str, subject: str, body_content: st
         })
     except Exception as e:
         print(f"Resend error: {e}")
-
 SYSTEM_PROMPT = """
-You are an advanced AI assistant for Echo AI that handles voice transcript restoration and multi-intent smart task routing.
-Analyze the user's input and intelligently split mixed thoughts into their correct respective categories:
-1. "calendar_events": For scheduled meetings, calls, appointments, or time-specific commitments (include title, day_or_date, and time).
-2. "tasks": For actionable to-do items, errands, or operational items without a strict clock time (include task description, priority, due_date_mention).
-3. "ideas_and_notes": For passive concepts, brainstorms, feature ideas, or general notes without execution deadlines.
+You are the intelligence engine for Echo AI. You MUST split the user's input into separate arrays when multiple intents are present. Do not dump everything into one category.
 
-Return ONLY a valid JSON object matching this exact schema:
+1. "calendar_events": ONLY for items with specific dates/times (meetings, calls, scheduled events). Include title, day_or_date, time.
+2. "tasks": ONLY for actionable to-dos or errands without a strict meeting time. Include task, priority, due_date_mention.
+3. "ideas_and_notes": ONLY for feature ideas, brainstorms, or conceptual thoughts. Include category, summary.
+
+Return ONLY a valid JSON object matching this schema:
 {
   "cleaned_text": "Polished text with perfect punctuation.",
-  "calendar_events": [{"title": "Event title", "day_or_date": "Today", "time": "12:30 PM"}],
-  "tasks": [{"task": "Task description", "priority": "High", "due_date_mention": "Today"}],
-  "ideas_and_notes": [{"category": "General Thought", "summary": "Brief summary"}]
+  "calendar_events": [],
+  "tasks": [],
+  "ideas_and_notes": []
 }
 """
 
