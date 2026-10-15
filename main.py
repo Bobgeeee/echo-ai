@@ -279,15 +279,22 @@ class ResetPasswordSchema(BaseModel):
     new_password: str
 
 @app.get("/", response_class=HTMLResponse)
-@app.get("/reset-password", response_class=HTMLResponse)
 def read_root():
     with open("index.html", "r", encoding="utf-8") as f:
         return HTMLResponse(content=f.read())
 
+@app.get("/reset-password", response_class=HTMLResponse)
+def read_reset_password():
+    with open("reset_password.html", "r", encoding="utf-8") as f:
+        return HTMLResponse(content=f.read())
+    
 @app.post("/api/register")
 def register(user_data: RegisterSchema, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+    if len(user_data.password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters long.")
     if user_data.password != user_data.confirm_password:
         raise HTTPException(status_code=400, detail="Passwords do not match.")
+    ...
     
     existing_user = db.query(User).filter(User.email == user_data.email).first()
     if existing_user:
