@@ -294,7 +294,6 @@ def register(user_data: RegisterSchema, background_tasks: BackgroundTasks, db: S
         raise HTTPException(status_code=400, detail="Password must be at least 8 characters long.")
     if user_data.password != user_data.confirm_password:
         raise HTTPException(status_code=400, detail="Passwords do not match.")
-    ...
     
     existing_user = db.query(User).filter(User.email == user_data.email).first()
     if existing_user:
@@ -382,7 +381,7 @@ def forgot_password(data: ForgotPasswordSchema, background_tasks: BackgroundTask
     background_tasks.add_task(send_email_notification, user.email, "Echo AI - Secure Password Reset Link", email_body)
     return {"message": "If the email exists, a reset link has been sent."}
 
-@app.post("/api/reset-password")
+@app.post("/api/reset-password-confirm")
 def reset_password(data: ResetPasswordSchema, db: Session = Depends(get_db)):
     try:
         payload = jwt.decode(data.token, SECRET_KEY, algorithms=[ALGORITHM])
