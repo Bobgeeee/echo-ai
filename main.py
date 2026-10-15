@@ -114,9 +114,9 @@ def send_email_notification(recipient_email: str, subject: str, body_content: st
         print(f"Resend error: {e}")
 
 SYSTEM_PROMPT = """
-You are the intelligence engine for Echo AI. Analyze the user's input and split thoughts into their correct categories:
+You are the intelligence engine for Echo AI. Analyze the user's input and split mixed thoughts into their correct respective categories:
 1. "calendar_events": For scheduled meetings, calls, appointments, or time-specific commitments. Keys required: "title", "day_or_date", "time".
-2. "tasks": For actionable to-do items, errands, or operational items. Keys required: "task", "priority", "due_date_mention".
+2. "tasks": For actionable to-do items, errands, or operational items without a strict clock time. Keys required: "task", "priority", "due_date_mention".
 3. "ideas_and_notes": For passive concepts, brainstorms, feature ideas, or general notes. Keys required: "category", "summary".
 
 Return ONLY a valid JSON object matching this exact schema:
@@ -131,17 +131,11 @@ Return ONLY a valid JSON object matching this exact schema:
 def parse_with_gemini(raw_text: str) -> dict:
     try:
         model = genai.GenerativeModel("gemini-1.5-flash")
-        response = model.generate_content(f"{SYSTEM_PROMPT}\n\nUser Input: {raw_text}")
-        
-        text_res = response.text.strip()
-        if text_res.startswith("```json"):
-            text_res = text_res[7:]
-        if text_res.startswith("```"):
-            text_res = text_res[3:]
-        if text_res.endswith("```"):
-            text_res = text_res[:-3]
-            
-        parsed_data = json.loads(text_res.strip())
+        response = model.generate_content(
+            f"{SYSTEM_PROMPT}\n\nUser Input: {raw_text}",
+            generation_config={"response_mime_type": "application/json"}
+        )
+        parsed_data = json.loads(response.text.strip())
         
         return {
             "cleaned_text": parsed_data.get("cleaned_text", raw_text),
@@ -151,11 +145,11 @@ def parse_with_gemini(raw_text: str) -> dict:
         }
     except Exception as e:
         print(f"Gemini parsing error: {e}")
-        # Safe fallback so it never returns empty or breaks the UI
+        # Safe fallback that returns empty lists instead of forcing everything into tasks
         return {
             "cleaned_text": raw_text,
             "calendar_events": [],
-            "tasks": [{"task": raw_text, "priority": "Medium", "due_date_mention": "Today"}],
+            "tasks": [],
             "ideas_and_notes": []
         }
 
