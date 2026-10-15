@@ -764,10 +764,9 @@
                 });
                 if (res.ok) {
                     const data = await res.json();
-                    renderResults(data);
                     document.getElementById("rawInputText").value = "";
                     document.getElementById("statusText").innerText = "Processed successfully!";
-                    loadHistory();
+                    loadHistory(); // Reload history and aggregate today's active dashboard items
 
                     let summaryParts = [];
                     if (data.calendar_events?.length) summaryParts.push(`${data.calendar_events.length} event(s) to Calendar`);
@@ -791,7 +790,6 @@
             const taskList = document.getElementById("tasksList");
             const noteList = document.getElementById("notesList");
 
-            // Guaranteed clean reset
             calList.innerHTML = '';
             taskList.innerHTML = '';
             noteList.innerHTML = '';
@@ -844,9 +842,33 @@
                     const history = await res.json();
                     const list = document.getElementById("historyList");
                     list.innerHTML = history.length ? '' : '<div class="history-item"><p>No past dumps yet.</p></div>';
+                    
+                    let todaysAggregatedData = {
+                        calendar_events: [],
+                        tasks: [],
+                        ideas_and_notes: []
+                    };
+                    const todayStr = new Date().toDateString();
+
                     history.forEach(item => {
                         list.innerHTML += `<div class="history-item" onclick='renderResults(${JSON.stringify(item.parsed_data)})'><p><strong>${new Date(item.created_at).toLocaleDateString()}</strong></p><p>${item.raw_text}</p></div>`;
+                        
+                        // Accumulate today's items into the active dashboard tables
+                        if (new Date(item.created_at).toDateString() === todayStr) {
+                            if (item.parsed_data.calendar_events) {
+                                todaysAggregatedData.calendar_events.push(...item.parsed_data.calendar_events);
+                            }
+                            if (item.parsed_data.tasks) {
+                                todaysAggregatedData.tasks.push(...item.parsed_data.tasks);
+                            }
+                            if (item.parsed_data.ideas_and_notes) {
+                                todaysAggregatedData.ideas_and_notes.push(...item.parsed_data.ideas_and_notes);
+                            }
+                        }
                     });
+
+                    // Render today's accumulated items onto active dashboard cards
+                    renderResults(todaysAggregatedData);
                 }
             } catch (err) {}
         }
