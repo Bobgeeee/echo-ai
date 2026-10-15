@@ -115,9 +115,9 @@ def send_email_notification(recipient_email: str, subject: str, body_content: st
 
 SYSTEM_PROMPT = """
 You are an advanced AI assistant for Echo AI that handles voice transcript restoration and multi-intent smart task routing.
-Analyze the user's input and intelligently split mixed thoughts into the correct categories:
+Analyze the user's input and intelligently split mixed thoughts into their correct respective categories:
 1. "calendar_events": For scheduled meetings, calls, appointments, or time-specific commitments (include title, day_or_date, and time).
-2. "tasks": For actionable to-do items, errands, or operational items (include task description, priority, due_date_mention).
+2. "tasks": For actionable to-do items, errands, or operational items without a strict clock time (include task description, priority, due_date_mention).
 3. "ideas_and_notes": For passive concepts, brainstorms, feature ideas, or general notes without execution deadlines.
 
 Return ONLY a valid JSON object matching this exact schema:
@@ -129,26 +129,13 @@ Return ONLY a valid JSON object matching this exact schema:
 }
 """
 
-def normalize_time_string(time_str: str) -> str:
-    if not time_str:
-        return ""
-    clean = time_str.replace('.', '').strip().upper()
-    clean = re.sub(r'(\d+:\d+|\d+)(AM|PM)', r'\1 \2', clean)
-    if ':' not in clean:
-        clean = re.sub(r'(\d+)\s*(AM|PM)', r'\1:00 \2', clean)
-    return clean
-
-def extract_time_fallback(raw_text: str) -> Optional[str]:
-    pattern = r'\b(1[0-2]|0?[1-9])(?::([0-5][0-9]))?\s*(a\.?m\.?|p\.?m\.?|am|pm)\b'
-    match = re.search(pattern, raw_text, re.IGNORECASE)
-    if match:
-        return normalize_time_string(match.group(0))
-    return None
-
 def parse_with_gemini(raw_text: str) -> dict:
     try:
         model = genai.GenerativeModel("gemini-1.5-flash")
-        response = model.generate_content(f"{SYSTEM_PROMPT}\n\nUser Input: {raw_text}")
+        response = model.generate_content(
+            f"{SYSTEM_PROMPT}\n\nUser Input: {raw_text}",
+            generation_config={"response_mime_type": "application/json"}
+        )
         cleaned_json = response.text.strip().replace("```json", "").replace("```", "")
         parsed_data = json.loads(cleaned_json)
         
@@ -164,11 +151,10 @@ def parse_with_gemini(raw_text: str) -> dict:
         return parsed_data
     except Exception as e:
         print(f"Gemini parsing error: {e}")
-        extracted_time = extract_time_fallback(raw_text)
         return {
             "cleaned_text": raw_text,
-            "calendar_events": [{"title": raw_text.strip(), "day_or_date": "Today", "time": extracted_time}] if extracted_time else [],
-            "tasks": [{"task": raw_text, "priority": "Medium", "due_date_mention": "Today"}] if not extracted_time else [],
+            "calendar_events": [],
+            "tasks": [{"task": raw_text, "priority": "Medium", "due_date_mention": "Today"}],
             "ideas_and_notes": []
         }
 
