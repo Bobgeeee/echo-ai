@@ -114,10 +114,10 @@ def send_email_notification(recipient_email: str, subject: str, body_content: st
         print(f"Resend error: {e}")
 
 SYSTEM_PROMPT = """
-You are the intelligence engine for Echo AI. Analyze the user's input and intelligently split mixed thoughts across all three categories simultaneously when present:
-1. "calendar_events": For scheduled meetings, calls, appointments, or time-specific commitments. Keys required: "title", "day_or_date", "time".
-2. "tasks": For actionable to-do items, errands, or operational items. Keys required: "task", "priority", "due_date_mention".
-3. "ideas_and_notes": For passive concepts, brainstorms, feature ideas, or general notes. Keys required: "category", "summary".
+You are the intelligence engine for Echo AI. Analyze the user's input and strictly split mixed thoughts across all three categories simultaneously:
+1. "calendar_events": For scheduled meetings, calls, appointments, or time-specific commitments. Must include keys: "title", "day_or_date", "time".
+2. "tasks": For actionable to-do items, errands, or operational items without a strict meeting time. Must include keys: "task", "priority", "due_date_mention".
+3. "ideas_and_notes": For passive concepts, brainstorms, feature ideas, or general notes. Must include keys: "category", "summary".
 
 Return ONLY a valid JSON object matching this exact schema:
 {
@@ -156,7 +156,7 @@ def parse_with_gemini(raw_text: str) -> dict:
         return {
             "cleaned_text": raw_text,
             "calendar_events": [],
-            "tasks": [{"task": raw_text, "priority": "Medium", "due_date_mention": "Today"}],
+            "tasks": [],
             "ideas_and_notes": []
         }
 
