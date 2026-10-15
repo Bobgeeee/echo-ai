@@ -791,37 +791,50 @@
             const taskList = document.getElementById("tasksList");
             const noteList = document.getElementById("notesList");
 
-            if (calList.querySelector("li") && calList.querySelector("li").style.color) {
-                calList.innerHTML = '';
-            }
-            if (taskList.querySelector("li") && taskList.querySelector("li").style.color) {
-                taskList.innerHTML = '';
-            }
-            if (noteList.querySelector("li") && noteList.querySelector("li").style.color) {
-                noteList.innerHTML = '';
+            // Guaranteed clean reset
+            calList.innerHTML = '';
+            taskList.innerHTML = '';
+            noteList.innerHTML = '';
+
+            const events = data.calendar_events || [];
+            if (events.length > 0) {
+                events.forEach(ev => {
+                    calList.innerHTML += `<li class="card-item"><strong>${ev.title || "Event"}</strong><br><span style="color:var(--text-secondary);font-size:0.75rem;">${ev.day_or_date || "Today"} @ ${ev.time || "All Day"}</span></li>`;
+                    
+                    if (ev.time) {
+                        const parts = ev.time.split(' ');
+                        if (parts.length >= 2) {
+                            const [timePart, modifier] = parts;
+                            let [hours, minutes] = timePart.split(':').map(Number);
+                            if (modifier === 'PM' && hours < 12) hours += 12;
+                            if (modifier === 'AM' && hours === 12) hours = 0;
+                            const eventDate = new Date();
+                            eventDate.setHours(hours || 0, minutes || 0, 0, 0);
+                            scheduledEventsList.push({ title: ev.title, parsedTime: eventDate, notified: false });
+                        }
+                    }
+                });
+            } else {
+                calList.innerHTML = `<li class="card-item" style="color: var(--text-secondary);">No events extracted yet.</li>`;
             }
 
-            data.calendar_events?.forEach(ev => {
-                calList.innerHTML += `<li class="card-item"><strong>${ev.title}</strong><br><span style="color:var(--text-secondary);font-size:0.75rem;">${ev.day_or_date} @ ${ev.time}</span></li>`;
-                
-                if (ev.time) {
-                    const [timePart, modifier] = ev.time.split(' ');
-                    let [hours, minutes] = timePart.split(':').map(Number);
-                    if (modifier === 'PM' && hours < 12) hours += 12;
-                    if (modifier === 'AM' && hours === 12) hours = 0;
-                    const eventDate = new Date();
-                    eventDate.setHours(hours || 0, minutes || 0, 0, 0);
-                    scheduledEventsList.push({ title: ev.title, parsedTime: eventDate, notified: false });
-                }
-            });
+            const tasks = data.tasks || [];
+            if (tasks.length > 0) {
+                tasks.forEach(t => {
+                    taskList.innerHTML += `<li class="card-item"><strong>${t.task || t.title || "Task"}</strong><br><span style="color:var(--text-secondary);font-size:0.75rem;">Priority: ${t.priority || "Medium"}</span></li>`;
+                });
+            } else {
+                taskList.innerHTML = `<li class="card-item" style="color: var(--text-secondary);">No tasks extracted yet.</li>`;
+            }
 
-            data.tasks?.forEach(t => {
-                taskList.innerHTML += `<li class="card-item"><strong>${t.task}</strong><br><span style="color:var(--text-secondary);font-size:0.75rem;">Priority: ${t.priority}</span></li>`;
-            });
-
-            data.ideas_and_notes?.forEach(n => {
-                noteList.innerHTML += `<li class="card-item"><strong>${n.category}</strong>: ${n.summary}</li>`;
-            });
+            const notes = data.ideas_and_notes || [];
+            if (notes.length > 0) {
+                notes.forEach(n => {
+                    noteList.innerHTML += `<li class="card-item"><strong>${n.category || "Note"}</strong>: ${n.summary || n.note || ""}</li>`;
+                });
+            } else {
+                noteList.innerHTML = `<li class="card-item" style="color: var(--text-secondary);">No ideas saved yet.</li>`;
+            }
         }
 
         async function loadHistory() {
