@@ -797,41 +797,38 @@
             taskList.innerHTML = '';
             noteList.innerHTML = '';
 
-            const events = data.calendar_events || [];
+            // Fallback mapper for calendar events
+            const events = data.calendar_events || data.events || [];
             if (events.length > 0) {
                 events.forEach(ev => {
-                    calList.innerHTML += `<li class="card-item"><strong>${ev.title || "Event"}</strong><br><span style="color:var(--text-secondary);font-size:0.75rem;">${ev.day_or_date || "Today"} @ ${ev.time || "All Day"}</span></li>`;
-                    
-                    if (ev.time) {
-                        const parts = ev.time.split(' ');
-                        if (parts.length >= 2) {
-                            const [timePart, modifier] = parts;
-                            let [hours, minutes] = timePart.split(':').map(Number);
-                            if (modifier === 'PM' && hours < 12) hours += 12;
-                            if (modifier === 'AM' && hours === 12) hours = 0;
-                            const eventDate = new Date();
-                            eventDate.setHours(hours || 0, minutes || 0, 0, 0);
-                            scheduledEventsList.push({ title: ev.title, parsedTime: eventDate, notified: false });
-                        }
-                    }
+                    const title = ev.title || ev.event || ev.name || "Event";
+                    const dateStr = ev.day_or_date || ev.date || ev.when || "Today";
+                    const timeStr = ev.time || ev.clock || "All Day";
+                    calList.innerHTML += `<li class="card-item"><strong>${title}</strong><br><span style="color:var(--text-secondary);font-size:0.75rem;">${dateStr} @ ${timeStr}</span></li>`;
                 });
             } else {
                 calList.innerHTML = `<li class="card-item" style="color: var(--text-secondary);">No events extracted yet.</li>`;
             }
 
-            const tasks = data.tasks || [];
+            // Fallback mapper for tasks
+            const tasks = data.tasks || data.action_tasks || [];
             if (tasks.length > 0) {
                 tasks.forEach(t => {
-                    taskList.innerHTML += `<li class="card-item"><strong>${t.task || t.title || "Task"}</strong><br><span style="color:var(--text-secondary);font-size:0.75rem;">Priority: ${t.priority || "Medium"}</span></li>`;
+                    const taskDesc = t.task || t.description || t.title || "Task";
+                    const priority = t.priority || "Medium";
+                    taskList.innerHTML += `<li class="card-item"><strong>${taskDesc}</strong><br><span style="color:var(--text-secondary);font-size:0.75rem;">Priority: ${priority}</span></li>`;
                 });
             } else {
                 taskList.innerHTML = `<li class="card-item" style="color: var(--text-secondary);">No tasks extracted yet.</li>`;
             }
 
-            const notes = data.ideas_and_notes || [];
+            // Fallback mapper for ideas and notes
+            const notes = data.ideas_and_notes || data.notes || data.ideas || [];
             if (notes.length > 0) {
                 notes.forEach(n => {
-                    noteList.innerHTML += `<li class="card-item"><strong>${n.category || "Note"}</strong>: ${n.summary || n.note || ""}</li>`;
+                    const category = n.category || n.type || "Note";
+                    const summary = n.summary || n.note || n.description || "";
+                    noteList.innerHTML += `<li class="card-item"><strong>${category}</strong>: ${summary}</li>`;
                 });
             } else {
                 noteList.innerHTML = `<li class="card-item" style="color: var(--text-secondary);">No ideas saved yet.</li>`;
