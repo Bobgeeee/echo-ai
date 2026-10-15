@@ -769,7 +769,6 @@
                     document.getElementById("statusText").innerText = "Processed successfully!";
                     loadHistory();
 
-                    // Push notification summarizing routing positions
                     let summaryParts = [];
                     if (data.calendar_events?.length) summaryParts.push(`${data.calendar_events.length} event(s) to Calendar`);
                     if (data.tasks?.length) summaryParts.push(`${data.tasks.length} task(s) to Action Tasks`);
@@ -792,13 +791,19 @@
             const taskList = document.getElementById("tasksList");
             const noteList = document.getElementById("notesList");
 
-            scheduledEventsList = [];
+            if (calList.querySelector("li") && calList.querySelector("li").style.color) {
+                calList.innerHTML = '';
+            }
+            if (taskList.querySelector("li") && taskList.querySelector("li").style.color) {
+                taskList.innerHTML = '';
+            }
+            if (noteList.querySelector("li") && noteList.querySelector("li").style.color) {
+                noteList.innerHTML = '';
+            }
 
-            calList.innerHTML = data.calendar_events?.length ? '' : '<li class="card-item" style="color:var(--text-secondary);">No events found.</li>';
             data.calendar_events?.forEach(ev => {
                 calList.innerHTML += `<li class="card-item"><strong>${ev.title}</strong><br><span style="color:var(--text-secondary);font-size:0.75rem;">${ev.day_or_date} @ ${ev.time}</span></li>`;
                 
-                // Parse time for alarms
                 if (ev.time) {
                     const [timePart, modifier] = ev.time.split(' ');
                     let [hours, minutes] = timePart.split(':').map(Number);
@@ -810,12 +815,10 @@
                 }
             });
 
-            taskList.innerHTML = data.tasks?.length ? '' : '<li class="card-item" style="color:var(--text-secondary);">No tasks found.</li>';
             data.tasks?.forEach(t => {
                 taskList.innerHTML += `<li class="card-item"><strong>${t.task}</strong><br><span style="color:var(--text-secondary);font-size:0.75rem;">Priority: ${t.priority}</span></li>`;
             });
 
-            noteList.innerHTML = data.ideas_and_notes?.length ? '' : '<li class="card-item" style="color:var(--text-secondary);">No notes found.</li>';
             data.ideas_and_notes?.forEach(n => {
                 noteList.innerHTML += `<li class="card-item"><strong>${n.category}</strong>: ${n.summary}</li>`;
             });
