@@ -134,7 +134,7 @@ def parse_with_gemini(raw_text: str) -> dict:
             "Content-Type": "application/json"
         }
         payload = {
-            "model": "llama-3.3-70b-versatile",
+            "model": "llama3-70b-8192",
             "messages": [
                 {"role": "system", "content": SYSTEM_PROMPT + "\nReturn ONLY valid JSON."},
                 {"role": "user", "content": raw_text}
