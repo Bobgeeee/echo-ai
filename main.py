@@ -31,7 +31,7 @@ resend.api_key = RESEND_API_KEY
 # Configure Google Gemini API Key
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", os.getenv("GOOGLE_API_KEY", ""))
 genai.configure(api_key=GEMINI_API_KEY)
-gemini_model = genai.GenerativeModel("gemini-3.8-flash")
+gemini_model = genai.GenerativeModel("gemini-2.5-pro")
 
 app = FastAPI(title="Echo AI Engine")
 app.mount("/static", StaticFiles(directory="static"), name="static")
