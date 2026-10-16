@@ -134,12 +134,11 @@ def parse_with_gemini(raw_text: str) -> dict:
             "Content-Type": "application/json"
         }
         payload = {
-            "model": "llama3-70b-8192",
+            "model": "llama-3.3-70b-versatile",
             "messages": [
-                {"role": "system", "content": SYSTEM_PROMPT + "\nReturn ONLY valid JSON."},
+                {"role": "system", "content": SYSTEM_PROMPT + "\nReturn ONLY valid JSON. No markdown ticks around it if possible."},
                 {"role": "user", "content": raw_text}
-            ],
-            "response_format": {"type": "json_object"}
+            ]
         }
         with httpx.Client(timeout=30.0) as client:
             response = client.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=payload)
@@ -147,7 +146,14 @@ def parse_with_gemini(raw_text: str) -> dict:
             data = response.json()
             text_res = data["choices"][0]["message"]["content"].strip()
             
-            parsed_data = json.loads(text_res)
+            if text_res.startswith("```json"):
+                text_res = text_res[7:]
+            if text_res.startswith("```"):
+                text_res = text_res[3:]
+            if text_res.endswith("```"):
+                text_res = text_res[:-3]
+            
+            parsed_data = json.loads(text_res.strip())
             
             return {
                 "cleaned_text": parsed_data.get("cleaned_text", raw_text),
@@ -155,6 +161,14 @@ def parse_with_gemini(raw_text: str) -> dict:
                 "tasks": parsed_data.get("tasks", []),
                 "ideas_and_notes": parsed_data.get("ideas_and_notes", [])
             }
+    except Exception as e:
+        print(f"AI parsing error: {e}")
+        return {
+            "cleaned_text": raw_text,
+            "calendar_events": [],
+            "tasks": [],
+            "ideas_and_notes": []
+        }
     except Exception as e:
         print(f"AI parsing error: {e}")
         return {
