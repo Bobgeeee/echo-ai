@@ -130,7 +130,7 @@ Return ONLY a valid JSON object matching this exact schema:
 
 def parse_with_gemini(raw_text: str) -> dict:
     try:
-        model = genai.GenerativeModel("gemini-pro") # Changed from gemini-1.5-flash to gemini-pro
+        model = genai.GenerativeModel("gemini-2.0-flash") # Updated to active cloud model
         response = model.generate_content(
             f"{SYSTEM_PROMPT}\n\nUser Input: {raw_text}",
             generation_config={"response_mime_type": "application/json"}
@@ -150,6 +150,14 @@ def parse_with_gemini(raw_text: str) -> dict:
             "calendar_events": parsed_data.get("calendar_events", []),
             "tasks": parsed_data.get("tasks", []),
             "ideas_and_notes": parsed_data.get("ideas_and_notes", [])
+        }
+    except Exception as e:
+        print(f"Gemini parsing error: {e}")
+        return {
+            "cleaned_text": raw_text,
+            "calendar_events": [],
+            "tasks": [],
+            "ideas_and_notes": []
         }
     except Exception as e:
         print(f"Gemini parsing error: {e}")
