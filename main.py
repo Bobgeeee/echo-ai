@@ -169,14 +169,6 @@ def parse_with_gemini(raw_text: str) -> dict:
             "tasks": [],
             "ideas_and_notes": []
         }
-    except Exception as e:
-        print(f"AI parsing error: {e}")
-        return {
-            "cleaned_text": raw_text,
-            "calendar_events": [],
-            "tasks": [],
-            "ideas_and_notes": []
-        }
 
 class RegisterSchema(BaseModel):
     email: EmailStr
@@ -285,7 +277,7 @@ def reset_password_confirm(data: ResetPasswordSchema, db: Session = Depends(get_
 def process_dump(dump: DumpSchema, request: Request, db: Session = Depends(get_db)):
     user = get_current_user(request, db)
     if not user:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+        raise HTTPException(status_code=401, detail="Notauthenticated")
     parsed_result = parse_with_gemini(dump.raw_text)
     db_dump = ThoughtDump(user_id=user.id, raw_text=parsed_result.get("cleaned_text", dump.raw_text), parsed_data=parsed_result)
     db.add(db_dump)
