@@ -1,7 +1,6 @@
 import os
 import re
 import json
-import httpx
 from datetime import datetime, timezone, timedelta
 from typing import Optional, List
 from fastapi import FastAPI, HTTPException, Depends, Request, Response, BackgroundTasks, status
@@ -14,6 +13,7 @@ from sqlalchemy.orm import sessionmaker, Session
 import jwt
 import bcrypt
 import resend
+from groq import Groq
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./echo_ai.db")
 if DATABASE_URL.startswith("postgres://"):
@@ -29,6 +29,7 @@ SENDER_EMAIL = os.getenv("SENDER_EMAIL", "support@echoai.buzz")
 resend.api_key = RESEND_API_KEY
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+groq_client = Groq(api_key=GROQ_API_KEY)
 
 app = FastAPI(title="Echo AI Engine")
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -129,38 +130,23 @@ Return ONLY a valid JSON object matching this exact schema:
 
 def parse_with_gemini(raw_text: str) -> dict:
     try:
-        headers = {
-            "Authorization": f"Bearer {GROQ_API_KEY}",
-            "Content-Type": "application/json"
-        }
-        payload = {
-            "model": "llama-3.3-70b-versatile",
-            "messages": [
-                {"role": "system", "content": SYSTEM_PROMPT + "\nReturn ONLY valid JSON. No markdown ticks around it if possible."},
+        completion = groq_client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT + "\nReturn ONLY valid JSON."},
                 {"role": "user", "content": raw_text}
-            ]
+            ],
+            response_format={"type": "json_object"}
+        )
+        text_res = completion.choices[0].message.content.strip()
+        parsed_data = json.loads(text_res)
+        
+        return {
+            "cleaned_text": parsed_data.get("cleaned_text", raw_text),
+            "calendar_events": parsed_data.get("calendar_events", []),
+            "tasks": parsed_data.get("tasks", []),
+            "ideas_and_notes": parsed_data.get("ideas_and_notes", [])
         }
-        with httpx.Client(timeout=30.0) as client:
-            response = client.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=payload)
-            response.raise_for_status()
-            data = response.json()
-            text_res = data["choices"][0]["message"]["content"].strip()
-            
-            if text_res.startswith("```json"):
-                text_res = text_res[7:]
-            if text_res.startswith("```"):
-                text_res = text_res[3:]
-            if text_res.endswith("```"):
-                text_res = text_res[:-3]
-            
-            parsed_data = json.loads(text_res.strip())
-            
-            return {
-                "cleaned_text": parsed_data.get("cleaned_text", raw_text),
-                "calendar_events": parsed_data.get("calendar_events", []),
-                "tasks": parsed_data.get("tasks", []),
-                "ideas_and_notes": parsed_data.get("ideas_and_notes", [])
-            }
     except Exception as e:
         print(f"AI parsing error: {e}")
         return {
@@ -277,7 +263,7 @@ def reset_password_confirm(data: ResetPasswordSchema, db: Session = Depends(get_
 def process_dump(dump: DumpSchema, request: Request, db: Session = Depends(get_db)):
     user = get_current_user(request, db)
     if not user:
-        raise HTTPException(status_code=401, detail="Notauthenticated")
+        raise HTTPException(status_code=401, detail="Not authenticated")
     parsed_result = parse_with_gemini(dump.raw_text)
     db_dump = ThoughtDump(user_id=user.id, raw_text=parsed_result.get("cleaned_text", dump.raw_text), parsed_data=parsed_result)
     db.add(db_dump)
