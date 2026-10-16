@@ -1,6 +1,7 @@
 import os
 import re
 import json
+import httpx
 from datetime import datetime, timezone, timedelta
 from typing import Optional, List
 from fastapi import FastAPI, HTTPException, Depends, Request, Response, BackgroundTasks, status
@@ -12,7 +13,6 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 import jwt
 import bcrypt
-import google.generativeai as genai
 import resend
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./echo_ai.db")
@@ -28,8 +28,7 @@ RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
 SENDER_EMAIL = os.getenv("SENDER_EMAIL", "support@echoai.buzz")
 resend.api_key = RESEND_API_KEY
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY")
-genai.configure(api_key=GEMINI_API_KEY)
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 
 app = FastAPI(title="Echo AI Engine")
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -130,43 +129,41 @@ Return ONLY a valid JSON object matching this exact schema:
 
 def parse_with_gemini(raw_text: str) -> dict:
     try:
-        model = genai.GenerativeModel("gemini-3.8-flash") # Updated to active cloud model
-        response = model.generate_content(
-            f"{SYSTEM_PROMPT}\n\nUser Input: {raw_text}",
-            generation_config={"response_mime_type": "application/json"}
-        )
-        text_res = response.text.strip()
-        if text_res.startswith("```json"):
-            text_res = text_res[7:]
-        if text_res.startswith("```"):
-            text_res = text_res[3:]
-        if text_res.endswith("```"):
-            text_res = text_res[:-3]
+        headers = {
+            "Authorization": f"Bearer {GROQ_API_KEY}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "model": "llama-3.3-70b-versatile",
+            "messages": [
+                {"role": "system", "content": SYSTEM_PROMPT + "\nReturn ONLY valid JSON."},
+                {"role": "user", "content": raw_text}
+            ],
+            "response_format": {"type": "json_object"}
+        }
+        with httpx.Client(timeout=30.0) as client:
+            response = client.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=payload)
+            response.raise_for_status()
+            data = response.json()
+            text_res = data["choices"][0]["message"]["content"].strip()
             
-        parsed_data = json.loads(text_res.strip())
-        
-        return {
-            "cleaned_text": parsed_data.get("cleaned_text", raw_text),
-            "calendar_events": parsed_data.get("calendar_events", []),
-            "tasks": parsed_data.get("tasks", []),
-            "ideas_and_notes": parsed_data.get("ideas_and_notes", [])
-        }
+            parsed_data = json.loads(text_res)
+            
+            return {
+                "cleaned_text": parsed_data.get("cleaned_text", raw_text),
+                "calendar_events": parsed_data.get("calendar_events", []),
+                "tasks": parsed_data.get("tasks", []),
+                "ideas_and_notes": parsed_data.get("ideas_and_notes", [])
+            }
     except Exception as e:
-        print(f"Gemini parsing error: {e}")
+        print(f"AI parsing error: {e}")
         return {
             "cleaned_text": raw_text,
             "calendar_events": [],
             "tasks": [],
             "ideas_and_notes": []
         }
-    except Exception as e:
-        print(f"Gemini parsing error: {e}")
-        return {
-            "cleaned_text": raw_text,
-            "calendar_events": [],
-            "tasks": [],
-            "ideas_and_notes": []
-        }
+
 class RegisterSchema(BaseModel):
     email: EmailStr
     password: str
