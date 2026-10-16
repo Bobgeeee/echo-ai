@@ -13,7 +13,7 @@ from sqlalchemy.orm import sessionmaker, Session
 import jwt
 import bcrypt
 import resend
-from groq import Groq
+import google.generativeai as genai
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./echo_ai.db")
 if DATABASE_URL.startswith("postgres://"):
@@ -28,8 +28,10 @@ RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
 SENDER_EMAIL = os.getenv("SENDER_EMAIL", "support@echoai.buzz")
 resend.api_key = RESEND_API_KEY
 
-GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
-groq_client = Groq(api_key=GROQ_API_KEY)
+# Configure Google Gemini API Key
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", os.getenv("GOOGLE_API_KEY", ""))
+genai.configure(api_key=GEMINI_API_KEY)
+gemini_model = genai.GenerativeModel("gemini-1.5-flash")
 
 app = FastAPI(title="Echo AI Engine")
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -114,10 +116,10 @@ def send_email_notification(recipient_email: str, subject: str, body_content: st
         print(f"Resend error: {e}")
 
 SYSTEM_PROMPT = """
-You are the intelligence engine for Echo AI. Analyze the user's input and strictly split mixed thoughts across all three categories simultaneously:
-1. "calendar_events": For scheduled meetings, calls, appointments, or time-specific commitments. Must include keys: "title", "day_or_date", "time".
-2. "tasks": For actionable to-do items, errands, or operational items without a strict meeting time. Must include keys: "task", "priority", "due_date_mention".
-3. "ideas_and_notes": For passive concepts, brainstorms, feature ideas, or general notes. Must include keys: "category", "summary".
+You are the intelligence engine for Echo AI. Analyze the user's input and parse it across categories:
+1. "calendar_events": For scheduled meetings, calls, appointments, or time-specific commitments. Keys: "title", "day_or_date", "time".
+2. "tasks": For actionable to-do items or operational items. Keys: "task", "priority", "due_date_mention".
+3. "ideas_and_notes": For passive concepts, brainstorms, or general notes. Keys: "category", "summary".
 
 Return ONLY a valid JSON object matching this exact schema:
 {
@@ -130,15 +132,12 @@ Return ONLY a valid JSON object matching this exact schema:
 
 def parse_with_gemini(raw_text: str) -> dict:
     try:
-        completion = groq_client.chat.completions.create(
-            model="llama-3.1-8b-instant",
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT + "\nReturn ONLY valid JSON."},
-                {"role": "user", "content": raw_text}
-            ],
-            response_format={"type": "json_object"}
+        prompt = f"{SYSTEM_PROMPT}\n\nUser Input: {raw_text}"
+        response = gemini_model.generate_content(
+            prompt,
+            generation_config={"response_mime_type": "application/json"}
         )
-        text_res = completion.choices[0].message.content.strip()
+        text_res = response.text.strip()
         parsed_data = json.loads(text_res)
         
         return {
@@ -148,7 +147,7 @@ def parse_with_gemini(raw_text: str) -> dict:
             "ideas_and_notes": parsed_data.get("ideas_and_notes", [])
         }
     except Exception as e:
-        print(f"AI parsing error: {e}")
+        print(f"Gemini parsing error: {e}")
         return {
             "cleaned_text": raw_text,
             "calendar_events": [],
