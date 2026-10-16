@@ -12,8 +12,8 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 import jwt
 import bcrypt
-import resend
 import google.generativeai as genai
+import resend
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./echo_ai.db")
 if DATABASE_URL.startswith("postgres://"):
@@ -28,10 +28,8 @@ RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
 SENDER_EMAIL = os.getenv("SENDER_EMAIL", "support@echoai.buzz")
 resend.api_key = RESEND_API_KEY
 
-# Configure Google Gemini API Key
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", os.getenv("GOOGLE_API_KEY", ""))
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY")
 genai.configure(api_key=GEMINI_API_KEY)
-gemini_model = genai.GenerativeModel("gemini-2.5-pro")
 
 app = FastAPI(title="Echo AI Engine")
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -116,12 +114,8 @@ def send_email_notification(recipient_email: str, subject: str, body_content: st
         print(f"Resend error: {e}")
 
 SYSTEM_PROMPT = """
-You are the intelligence engine for Echo AI. Analyze the user's input and parse it across categories:
-1. "calendar_events": For scheduled meetings, calls, appointments, or time-specific commitments. Keys: "title", "day_or_date", "time".
-2. "tasks": For actionable to-do items or operational items. Keys: "task", "priority", "due_date_mention".
-3. "ideas_and_notes": For passive concepts, brainstorms, or general notes. Keys: "category", "summary".
-
-Return ONLY a valid JSON object matching this exact schema:
+You are an advanced AI assistant that handles voice transcript restoration and smart task routing.
+Return ONLY a valid JSON object matching this schema:
 {
   "cleaned_text": "Polished text with perfect punctuation.",
   "calendar_events": [{"title": "Event title", "day_or_date": "Today", "time": "12:30 PM"}],
@@ -130,28 +124,55 @@ Return ONLY a valid JSON object matching this exact schema:
 }
 """
 
+def normalize_time_string(time_str: str) -> str:
+    if not time_str:
+        return ""
+    clean = time_str.replace('.', '').strip().upper()
+    clean = re.sub(r'(\d+:\d+|\d+)(AM|PM)', r'\1 \2', clean)
+    if ':' not in clean:
+        clean = re.sub(r'(\d+)\s*(AM|PM)', r'\1:00 \2', clean)
+    return clean
+
+def extract_time_fallback(raw_text: str) -> Optional[str]:
+    pattern = r'\b(1[0-2]|0?[1-9])(?::([0-5][0-9]))?\s*(a\.?m\.?|p\.?m\.?|am|pm)\b'
+    match = re.search(pattern, raw_text, re.IGNORECASE)
+    if match:
+        return normalize_time_string(match.group(0))
+    return None
+
 def parse_with_gemini(raw_text: str) -> dict:
     try:
-        prompt = f"{SYSTEM_PROMPT}\n\nUser Input: {raw_text}"
-        response = gemini_model.generate_content(
-            prompt,
-            generation_config={"response_mime_type": "application/json"}
-        )
-        text_res = response.text.strip()
-        parsed_data = json.loads(text_res)
+        model = genai.GenerativeModel("gemini-1.5-flash")
+        response = model.generate_content(f"{SYSTEM_PROMPT}\n\nUser Input: {raw_text}")
+        cleaned_json = response.text.strip().replace("```json", "").replace("```", "")
+        parsed_data = json.loads(cleaned_json)
         
-        return {
-            "cleaned_text": parsed_data.get("cleaned_text", raw_text),
-            "calendar_events": parsed_data.get("calendar_events", []),
-            "tasks": parsed_data.get("tasks", []),
-            "ideas_and_notes": parsed_data.get("ideas_and_notes", [])
-        }
-    except Exception as e:
-        print(f"Gemini parsing error: {e}")
+        extracted_time = extract_time_fallback(raw_text)
+        if extracted_time:
+            if not parsed_data.get("calendar_events"):
+                parsed_data["calendar_events"] = []
+            parsed_data["calendar_events"].append({
+                "title": raw_text.strip(),
+                "day_or_date": "Today",
+                "time": extracted_time
+            })
+            parsed_data["tasks"] = []
+            parsed_data["ideas_and_notes"] = []
+
+        return parsed_data
+    except Exception:
+        extracted_time = extract_time_fallback(raw_text)
+        if extracted_time:
+            return {
+                "cleaned_text": raw_text,
+                "calendar_events": [{"title": raw_text.strip(), "day_or_date": "Today", "time": extracted_time}],
+                "tasks": [],
+                "ideas_and_notes": []
+            }
         return {
             "cleaned_text": raw_text,
             "calendar_events": [],
-            "tasks": [],
+            "tasks": [{"task": raw_text, "priority": "Medium", "due_date_mention": "Today"}],
             "ideas_and_notes": []
         }
 
