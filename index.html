@@ -742,7 +742,7 @@
                     errorMsg.innerText = data.detail || "Authentication failed.";
                 }
             } catch (err) {
-                errorMsg.persist = "Network error.";
+                errorMsg.innerText = "Network error.";
             }
         }
 
@@ -764,12 +764,10 @@
                 });
                 if (res.ok) {
                     const data = await res.json();
+                    renderResults(data);
                     document.getElementById("rawInputText").value = "";
                     document.getElementById("statusText").innerText = "Processed successfully!";
-                    
-                    // FIXED: Immediately render results on the dashboard tables upon successful processing!
-                    renderResults(data);
-                    loadHistory(); 
+                    loadHistory();
 
                     let summaryParts = [];
                     if (data.calendar_events?.length) summaryParts.push(`${data.calendar_events.length} event(s) to Calendar`);
@@ -793,46 +791,37 @@
             const taskList = document.getElementById("tasksList");
             const noteList = document.getElementById("notesList");
 
-            calList.innerHTML = '';
-            taskList.innerHTML = '';
-            noteList.innerHTML = '';
-
-            // Fallback mapper for calendar events
-            const events = data.calendar_events || data.events || [];
-            if (events.length > 0) {
-                events.forEach(ev => {
-                    const title = ev.title || ev.event || ev.name || "Event";
-                    const dateStr = ev.day_or_date || ev.date || ev.when || "Today";
-                    const timeStr = ev.time || ev.clock || "All Day";
-                    calList.innerHTML += `<li class="card-item"><strong>${title}</strong><br><span style="color:var(--text-secondary);font-size:0.75rem;">${dateStr} @ ${timeStr}</span></li>`;
-                });
-            } else {
-                calList.innerHTML = `<li class="card-item" style="color: var(--text-secondary);">No events extracted yet.</li>`;
+            if (calList.querySelector("li") && calList.querySelector("li").style.color) {
+                calList.innerHTML = '';
+            }
+            if (taskList.querySelector("li") && taskList.querySelector("li").style.color) {
+                taskList.innerHTML = '';
+            }
+            if (noteList.querySelector("li") && noteList.querySelector("li").style.color) {
+                noteList.innerHTML = '';
             }
 
-            // Fallback mapper for tasks
-            const tasks = data.tasks || data.action_tasks || [];
-            if (tasks.length > 0) {
-                tasks.forEach(t => {
-                    const taskDesc = t.task || t.description || t.title || "Task";
-                    const priority = t.priority || "Medium";
-                    taskList.innerHTML += `<li class="card-item"><strong>${taskDesc}</strong><br><span style="color:var(--text-secondary);font-size:0.75rem;">Priority: ${priority}</span></li>`;
-                });
-            } else {
-                taskList.innerHTML = `<li class="card-item" style="color: var(--text-secondary);">No tasks extracted yet.</li>`;
-            }
+            data.calendar_events?.forEach(ev => {
+                calList.innerHTML += `<li class="card-item"><strong>${ev.title}</strong><br><span style="color:var(--text-secondary);font-size:0.75rem;">${ev.day_or_date} @ ${ev.time}</span></li>`;
+                
+                if (ev.time) {
+                    const [timePart, modifier] = ev.time.split(' ');
+                    let [hours, minutes] = timePart.split(':').map(Number);
+                    if (modifier === 'PM' && hours < 12) hours += 12;
+                    if (modifier === 'AM' && hours === 12) hours = 0;
+                    const eventDate = new Date();
+                    eventDate.setHours(hours || 0, minutes || 0, 0, 0);
+                    scheduledEventsList.push({ title: ev.title, parsedTime: eventDate, notified: false });
+                }
+            });
 
-            // Fallback mapper for ideas and notes
-            const notes = data.ideas_and_notes || data.notes || data.ideas || [];
-            if (notes.length > 0) {
-                notes.forEach(n => {
-                    const category = n.category || n.type || "Note";
-                    const summary = n.summary || n.note || n.description || "";
-                    noteList.innerHTML += `<li class="card-item"><strong>${category}</strong>: ${summary}</li>`;
-                });
-            } else {
-                noteList.innerHTML = `<li class="card-item" style="color: var(--text-secondary);">No ideas saved yet.</li>`;
-            }
+            data.tasks?.forEach(t => {
+                taskList.innerHTML += `<li class="card-item"><strong>${t.task}</strong><br><span style="color:var(--text-secondary);font-size:0.75rem;">Priority: ${t.priority}</span></li>`;
+            });
+
+            data.ideas_and_notes?.forEach(n => {
+                noteList.innerHTML += `<li class="card-item"><strong>${n.category}</strong>: ${n.summary}</li>`;
+            });
         }
 
         async function loadHistory() {
@@ -842,40 +831,9 @@
                     const history = await res.json();
                     const list = document.getElementById("historyList");
                     list.innerHTML = history.length ? '' : '<div class="history-item"><p>No past dumps yet.</p></div>';
-                    
-                    let todaysAggregatedData = {
-                        calendar_events: [],
-                        tasks: [],
-                        ideas_and_notes: []
-                    };
-                    const now = new Date();
-
                     history.forEach(item => {
                         list.innerHTML += `<div class="history-item" onclick='renderResults(${JSON.stringify(item.parsed_data)})'><p><strong>${new Date(item.created_at).toLocaleDateString()}</strong></p><p>${item.raw_text}</p></div>`;
-                        
-                        // FIXED: Compare local date components to avoid UTC vs local timezone mismatches
-                        const itemDate = new Date(item.created_at);
-                        if (
-                            itemDate.getDate() === now.getDate() &&
-                            itemDate.getMonth() === now.getMonth() &&
-                            itemDate.getFullYear() === now.getFullYear()
-                        ) {
-                            if (item.parsed_data.calendar_events) {
-                                todaysAggregatedData.calendar_events.push(...item.parsed_data.calendar_events);
-                            }
-                            if (item.parsed_data.tasks) {
-                                todaysAggregatedData.tasks.push(...item.parsed_data.tasks);
-                            }
-                            if (item.parsed_data.ideas_and_notes) {
-                                todaysAggregatedData.ideas_and_notes.push(...item.parsed_data.ideas_and_notes);
-                            }
-                        }
                     });
-
-                    // Only overwrite with aggregated history if tables aren't already populated by an immediate submission
-                    if (todaysAggregatedData.calendar_events.length > 0 || todaysAggregatedData.tasks.length > 0 || todaysAggregatedData.ideas_and_notes.length > 0) {
-                        renderResults(todaysAggregatedData);
-                    }
                 }
             } catch (err) {}
         }
