@@ -130,7 +130,7 @@ Return ONLY a valid JSON object matching this exact schema:
 
 def parse_with_gemini(raw_text: str) -> dict:
     try:
-        model = genai.GenerativeModel("gemini-2.0-flash") # Updated to active cloud model
+        model = genai.GenerativeModel("gemini-3.8-flash") # Updated to active cloud model
         response = model.generate_content(
             f"{SYSTEM_PROMPT}\n\nUser Input: {raw_text}",
             generation_config={"response_mime_type": "application/json"}
